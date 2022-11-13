@@ -36,6 +36,10 @@ esp_call = RunService.RenderStepped:Connect(function(deltaTime)
         localplayer = Players.LocalPlayer
         return 
     end
+    if not camera then
+        camera = Workspace.CurrentCamera
+        return 
+    end
     clear_esp()
 
     if not settings.enable_esp then return end
