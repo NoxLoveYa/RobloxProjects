@@ -16,8 +16,8 @@ local settings = {
         font = 0,
     },
     Colors = {
-        ennemies = Color3.new(1, 0.639215, 0.345098),
-        teammates = Color3.new(0.384313, 0.215686, 0.701960)
+        ennemies = Color3.fromRGB(153, 94, 172),
+        teammates = Color3.fromRGB(158, 172, 94),
     }
 }
 
