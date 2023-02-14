@@ -24,6 +24,30 @@ local settings = {
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
+local function CalculateBox(Model)
+	if not Model then return end
+	local CFrame, Size = Model:GetBoundingBox()
+    local Camera = workspace.CurrentCamera
+	
+	local CornerTable = {
+		TopLeft = Camera:WorldToViewportPoint(Vector3.new(CFrame.X - Size.X / 2, CFrame.Y + Size.Y / 2, CFrame.Z)),
+		TopRight = Camera:WorldToViewportPoint(Vector3.new(CFrame.X + Size.X / 2, CFrame.Y + Size.Y / 2, CFrame.Z)),
+		BottomLeft = Camera:WorldToViewportPoint(Vector3.new(CFrame.X - Size.X / 2, CFrame.Y - Size.Y / 2, CFrame.Z)),
+		BottomRight = Camera:WorldToViewportPoint(Vector3.new(CFrame.X + Size.X / 2, CFrame.Y - Size.Y / 2, CFrame.Z))
+	}
+	
+	local WorldPosition, OnScreen = Camera:WorldToViewportPoint(CFrame.Position)
+	local ScreenSize = Vector2.new((CornerTable.TopLeft - CornerTable.TopRight).Magnitude, (CornerTable.TopLeft - CornerTable.BottomLeft).Magnitude)
+    local ScreenPosition = Vector2.new(WorldPosition.X - ScreenSize.X / 2, WorldPosition.Y - ScreenSize.Y / 2)
+	return {
+        WorldPosition = WorldPosition,
+		ScreenPosition = ScreenPosition, 
+		ScreenSize = ScreenSize,
+		OnScreen = OnScreen,
+        ScreenDepth = WorldPosition.Z
+	}
+end
+
 local function create_esp(character: Model)
 
     local player = Players:GetPlayerFromCharacter(character)
@@ -65,11 +89,13 @@ local function create_esp(character: Model)
         text.Size = 20
         text.Font = settings.Render.font
 
-        --calculate the screen_pos
-        local screen_pos, on_screen = camera:WorldToScreenPoint(head.Position + Vector3.new(0, 1, 0))
-        --skip if not on screen
-        if on_screen then
-            text.Position = Vector2.new(screen_pos.X, screen_pos.Y)
+        local box = CalculateBox(character)
+
+        if box.OnScreen then
+            text.Position = Vector2.new(box.ScreenPosition.X + box.ScreenSize.X/2, box.ScreenPosition.Y - 12)
+
+            local screen_depth = box.ScreenPosition.X + box.ScreenSize.X - box.ScreenPosition.X
+            screen_depth = screen_depth
         else
             text.Visible = false
         end
@@ -125,6 +151,12 @@ garbage.esp.calls["PlayerRemoving"] = Players.PlayerRemoving:Connect(disconnect_
 
 local function update_settings(new_settings: table)
     settings = new_settings
+end
+
+for index, player in ipairs(Players:GetPlayers()) do
+    if player == Players.LocalPlayer then continue end
+
+    connect_esp(player)
 end
 
 return {connect_esp = connect_esp, disconnect_esp = disconnect_esp, update_settings = update_settings}
