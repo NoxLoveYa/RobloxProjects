@@ -44,7 +44,7 @@ local function create_esp(character: Model)
         text.Color = settings.Colors.ennemies
     end
     
-    garbage.esp.texts[player.Name]["Call"] = RunService.Heartbeat:Connect(function(deltaTime)
+    RunService.Heartbeat:Connect(function(deltaTime)
 
         local camera = workspace.CurrentCamera
 
@@ -92,9 +92,6 @@ local function delete_esp(character: Model)
         value:Remove()
         garbage.esp.texts[player.Name]["Esp"][index] = nil
     end
-
-    garbage.esp.texts[player.Name]["Call"]:Disconnect()
-    garbage.esp.texts[player.Name]["Call"] = nil
 end
 
 local function connect_esp(player: Player)
