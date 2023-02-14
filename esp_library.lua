@@ -88,6 +88,11 @@ local function delete_esp(character: Model)
         value:Remove()
         garbage.esp.texts[player.Name]["Esp"][index] = nil
     end
+
+    if (garbage.esp.texts[player.Name]["Call"] ~= nil) then
+        garbage.esp.texts[player.Name]["Call"]:Disconnect()
+        garbage.esp.texts[player.Name]["Call"] = nil
+    end
 end
 
 local function connect_esp(player: Player)
