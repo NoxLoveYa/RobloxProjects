@@ -153,10 +153,4 @@ local function update_settings(new_settings: table)
     settings = new_settings
 end
 
-for index, player in ipairs(Players:GetPlayers()) do
-    if player == Players.LocalPlayer then continue end
-
-    connect_esp(player)
-end
-
 return {connect_esp = connect_esp, disconnect_esp = disconnect_esp, update_settings = update_settings}
