@@ -52,7 +52,7 @@ local function create_esp(character: Model)
         if not head then return end
 
         --update settings
-        if settings. player.TeamColor == Players.LocalPlayer.TeamColor then
+        if not settings.Render.render_teammates and player.TeamColor == Players.LocalPlayer.TeamColor then
 
             text.Visible = false
             return
