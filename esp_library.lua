@@ -12,6 +12,7 @@ local garbage = {
 local settings = {
     Render = {
         render_teammates = false,
+        render_ennemies = true,
         font = 0,
     },
     Colors = {
@@ -52,22 +53,17 @@ local function create_esp(character: Model)
         if not head then return end
 
         --update settings
-        if not settings.Render.render_teammates and player.TeamColor == Players.LocalPlayer.TeamColor then
-
-            text.Visible = false
-            return
+        if player.TeamColor == Players.LocalPlayer.TeamColor then
+            text.Color = settings.Colors.teammates
+            text.Visible = settings.Render.render_teammates
+        --ennemies
+        else
+            text.Color = settings.Colors.ennemies
+            text.Visible = settings.Render.render_ennemies
         end
 
         text.Size = 20
         text.Font = settings.Render.font
-
-        --teammates
-        if player.TeamColor == Players.LocalPlayer.TeamColor then
-            text.Color = settings.Colors.teammates
-        --ennemies
-        else
-            text.Color = settings.Colors.ennemies
-        end
 
         --calculate the screen_pos
         local screen_pos, on_screen = camera:WorldToScreenPoint(head.Position + Vector3.new(0, 1, 0))
