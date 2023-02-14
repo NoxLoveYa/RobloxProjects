@@ -45,7 +45,7 @@ local function create_esp(character: Model)
         text.Color = settings.Colors.ennemies
     end
     
-    RunService.Heartbeat:Connect(function(deltaTime)
+    garbage.esp.texts[player.Name]["Call"] = RunService.Heartbeat:Connect(function(deltaTime)
 
         local camera = workspace.CurrentCamera
 
@@ -70,7 +70,6 @@ local function create_esp(character: Model)
         --skip if not on screen
         if on_screen then
             text.Position = Vector2.new(screen_pos.X, screen_pos.Y)
-            text.Visible = true
         else
             text.Visible = false
         end
@@ -126,12 +125,6 @@ garbage.esp.calls["PlayerRemoving"] = Players.PlayerRemoving:Connect(disconnect_
 
 local function update_settings(new_settings: table)
     settings = new_settings
-end
-
-for index, player in ipairs(Players:GetPlayers()) do
-    if player == Players.LocalPlayer then continue end
-
-    connect_esp(player)
 end
 
 return {connect_esp = connect_esp, disconnect_esp = disconnect_esp, update_settings = update_settings}
