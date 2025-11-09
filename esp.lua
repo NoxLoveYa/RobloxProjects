@@ -1,7 +1,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local esp = loadstring(game:HttpGet("https://raw.githubusercontent.com/NoxLoveYa/RobloxProjects/main/esp_library.lua", true))()
+local esp = loadstring(game:HttpGet("https://raw.githubusercontent.com/NoxLoveYa/RobloxProjects/refs/heads/main/librarys/esp/esp_library.lua", true))()
 local esp_settings = {
     Render = {
         render_teammates = false,
