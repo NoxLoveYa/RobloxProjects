@@ -64,6 +64,17 @@ local function CreateGunTag()
     return text
 end
 
+local function CreateHealthTag()
+    local text = Drawing.new("Text")
+    text.Visible = false
+    text.Size = 12
+    text.Center = true
+    text.Outline = true
+    text.OutlineColor = Color3.new(0, 0, 0)
+    text.Color = Color3.new(0, 255, 0)
+    return text
+end
+
 -- Menu
 local text = Drawing.new("Text")
 text.Visible = true
@@ -120,15 +131,18 @@ local boxes = {}
 local nameTags = {}
 local distanceTags = {}
 local gunTags = {}
+local healthTags = {}
 local zombies = {}
 local zombieNameTags = {}
 local zombieDistanceTags = {}
+local zombieHealthTags = {}
 local corps = {}
 local corpsNameTags = {}
 local corpsDistanceTags = {}
+local corpsHealthTags = {}
 
 -- Helper ESP function
-local function UpdateESP(quad, nameTag, distanceTag, gunTag, character, displayName)
+local function UpdateESP(quad, nameTag, distanceTag, gunTag, healthTag, character, displayName)
     local head = character:FindFirstChild("Head")
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     local humanoid: Humanoid = character:FindFirstChild("Humanoid")
@@ -137,6 +151,7 @@ local function UpdateESP(quad, nameTag, distanceTag, gunTag, character, displayN
         quad.Visible = false
         if nameTag then nameTag.Visible = false end
         if distanceTag then distanceTag.Visible = false end
+        if healthTag then healthTag.Visible = false end
         return
     end
 
@@ -146,6 +161,7 @@ local function UpdateESP(quad, nameTag, distanceTag, gunTag, character, displayN
         quad.Visible = false
         if nameTag then nameTag.Visible = false end
         if distanceTag then distanceTag.Visible = false end
+        if healthTag then healthTag.Visible = false end
         return
     end
     
@@ -156,6 +172,7 @@ local function UpdateESP(quad, nameTag, distanceTag, gunTag, character, displayN
         quad.Visible = false
         if nameTag then nameTag.Visible = false end
         if distanceTag then distanceTag.Visible = false end
+        if healthTag then healthTag.Visible = false end
         return
     end
     
@@ -197,21 +214,52 @@ local function UpdateESP(quad, nameTag, distanceTag, gunTag, character, displayN
     -- Update gun tag (positioned under the distance tag)
     if gunTag ~= nil then
         local equipped = character.Equipped:GetChildren() 
-        distanceTag.Text = #equipped > 0 and equipped[1].Name or "Unarmed"
-        print(character.Name, ": ", #equipped)
-        distanceTag.Size = textSize
-        distanceTag.Outline = true
+        gunTag.Text = #equipped > 0 and equipped[1].Name or "Unarmed"
+        gunTag.Size = textSize
+        gunTag.Outline = true
+
+        -- Position at bottom of character (below feet)
+        distanceTag.Position = Vector2.new(feetPos.X, feetPos.Y - textSize * 2)
+        distanceTag.Visible = true
+    end
+
+    -- Update health tag (positioned on the left side of box)
+    if healthTag then
+        if not humanoid then
+            healthTag.Visible = false
+            return
+        end
+        local healthPercent = humanoid and math.floor((humanoid.Health / humanoid.MaxHealth) * 100) or 0
+        healthTag.Text = healthPercent .. "%"
+        healthTag.Size = textSize
+        healthTag.Outline = true
+        
+        -- Color gradient based on health
+        if healthPercent > 75 then
+            healthTag.Color = Color3.fromRGB(0, 255, 0)  -- Green
+        elseif healthPercent > 50 then
+            healthTag.Color = Color3.fromRGB(255, 255, 0)  -- Yellow
+        elseif healthPercent > 25 then
+            healthTag.Color = Color3.fromRGB(255, 165, 0)  -- Orange
+        else
+            healthTag.Color = Color3.fromRGB(255, 0, 0)  -- Red
+        end
+        
+        -- Position on the left side of the box
+        healthTag.Position = Vector2.new(headPos.X - width/2 - textSize, headPos.Y - textSize)
+        healthTag.Visible = true
     end
 end
 
 local function ConnectEsp(player: Player)
-    if player == Players.LocalPlayer then return end
+    -- if player == Players.LocalPlayer then return end
 
     if player.Character then
         boxes[player] = CreateQuadBox(player.Character, (player.TeamColor == Players.LocalPlayer.TeamColor) and Settings.BoxColorTeammates or Settings.BoxColor)
         nameTags[player] = CreateNameTag()
         distanceTags[player] = CreateDistanceTag()
         gunTags[player] = CreateGunTag()
+        healthTags[player] = CreateHealthTag()
     end
 
     player.CharacterAdded:Connect(function(character)
@@ -219,6 +267,7 @@ local function ConnectEsp(player: Player)
         nameTags[player] = CreateNameTag()
         distanceTags[player] = CreateDistanceTag()
         gunTags[player] = CreateGunTag()
+        healthTags[player] = CreateHealthTag()
     end)
 
     player.CharacterRemoving:Connect(function()
@@ -237,6 +286,10 @@ local function ConnectEsp(player: Player)
         if gunTags[player] then
             gunTags[player]:Remove()
             gunTags[player] = nil
+        end
+        if healthTags[player] then
+            healthTags[player]:Remove()
+            healthTags[player] = nil
         end
     end)
 
@@ -257,6 +310,10 @@ local function ConnectEsp(player: Player)
             gunTags[player]:Remove()
             gunTags[player] = nil
         end
+        if healthTags[player] then
+            healthTags[player]:Remove()
+            healthTags[player] = nil
+        end
     end)
 end
 
@@ -273,6 +330,7 @@ for _, zombie in ipairs(workspace.Zombies:GetChildren()) do
     zombies[zombie] = CreateQuadBox(zombie, Settings.BoxZombieColor)
     zombieNameTags[zombie] = CreateNameTag()
     zombieDistanceTags[zombie] = CreateDistanceTag()
+    zombieHealthTags[zombie] = CreateHealthTag()
     zombie.Destroying:Connect(function()
         if zombies[zombie] then
             zombies[zombie]:Remove()
@@ -285,6 +343,10 @@ for _, zombie in ipairs(workspace.Zombies:GetChildren()) do
         if zombieDistanceTags[zombie] then
             zombieDistanceTags[zombie]:Remove()
             zombieDistanceTags[zombie] = nil
+        end
+        if zombieHealthTags[zombie] then
+            zombieHealthTags[zombie]:Remove()
+            zombieHealthTags[zombie] = nil
         end
     end)
 end
@@ -292,6 +354,7 @@ workspace.Zombies.ChildAdded:Connect(function(zombie: Model)
     zombies[zombie] = CreateQuadBox(zombie, Settings.BoxZombieColor)
     zombieNameTags[zombie] = CreateNameTag()
     zombieDistanceTags[zombie] = CreateDistanceTag()
+    zombieHealthTags[zombie] = CreateHealthTag()
     zombie.Destroying:Connect(function()
         if zombies[zombie] then
             zombies[zombie]:Remove()
@@ -304,6 +367,10 @@ workspace.Zombies.ChildAdded:Connect(function(zombie: Model)
         if zombieDistanceTags[zombie] then
             zombieDistanceTags[zombie]:Remove()
             zombieDistanceTags[zombie] = nil
+        end
+        if zombieHealthTags[zombie] then
+            zombieHealthTags[zombie]:Remove()
+            zombieHealthTags[zombie] = nil
         end
     end)
 end)
@@ -314,6 +381,7 @@ for _, corp in ipairs(workspace.Corpses:GetChildren()) do
     corps[corp] = CreateQuadBox(corp, isPlayer and Settings.BoxPlayerCorpsColor or Settings.BoxZombieCorpsColor)
     corpsNameTags[corp] = CreateNameTag()
     corpsDistanceTags[corp] = CreateDistanceTag()
+    corpsHealthTags[corp] = CreateHealthTag()
     corp.Destroying:Connect(function()
         if corps[corp] then
             corps[corp]:Remove()
@@ -334,6 +402,7 @@ workspace.Corpses.ChildAdded:Connect(function(corp: Model)
     corps[corp] = CreateQuadBox(corp, isPlayer and Settings.BoxPlayerCorpsColor or Settings.BoxZombieCorpsColor)
     corpsNameTags[corp] = CreateNameTag()
     corpsDistanceTags[corp] = CreateDistanceTag()
+    corpsHealthTags[corp] = CreateHealthTag()
     corp.Destroying:Connect(function()
         if corps[corp] then
             corps[corp]:Remove()
@@ -354,17 +423,17 @@ end)
 game:GetService("RunService").RenderStepped:Connect(function()
     -- Update zombies
     for zombie, box in pairs(zombies) do
-        UpdateESP(box, zombieNameTags[zombie], zombieDistanceTags[zombie], nil, zombie, "Zombie")
+        UpdateESP(box, zombieNameTags[zombie], zombieDistanceTags[zombie], nil, zombieHealthTags[zombie], zombie, "Zombie")
     end
 
     -- Update corps
     for corp, box in pairs(corps) do
-        UpdateESP(box, corpsNameTags[corp], corpsDistanceTags[corp], nil, corp, corp:GetAttribute("InteractId") ~= nil and corp.Name or "DeadZombie")
+        UpdateESP(box, corpsNameTags[corp], corpsDistanceTags[corp], nil, nil, corp, corp:GetAttribute("InteractId") ~= nil and corp.Name or "DeadZombie")
     end
 
     -- Update players
     for player, box in pairs(boxes) do
-        UpdateESP(box, nameTags[player], distanceTags[player], gunTags[player], player.Character, player.Name)
+        UpdateESP(box, nameTags[player], distanceTags[player], gunTags[player], healthTags[player], player.Character, player.Name)
     end
     
     -- Update watermark color
