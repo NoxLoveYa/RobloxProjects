@@ -6,12 +6,64 @@ local Settings = {
     BoxColorTeammates = Color3.new(0, 0.5, 1),
     BoxColor = Color3.new(1, 0.5, 0),
     BoxZombieColor = Color3.new(0.3, 0, 1),
+    BoxZombieCorpsColor = Color3.new(1, 0, 0),
+    BoxPlayerCorpsColor = Color3.new(1, 0.470588, 0.647058),
     BoxSize = 2,
-    MaxDistance = 500
+    MaxDistance = 500,
+    YOffset = 0
 }
 
+local function CalculateTextSize(distance)
+    return math.max(10, math.min(16, 20 - (distance / 100)))
+end
+
+local function CreateQuadBox(character, color)
+    local quad = Drawing.new("Quad")
+    quad.Visible = false
+    quad.Color = color
+    quad.Thickness = 2
+    quad.Filled = false
+    
+    return quad
+end
+
+local function CreateNameTag()
+    local text = Drawing.new("Text")
+    text.Visible = false
+    text.Size = 12
+    text.Center = true
+    text.Outline = true
+    text.OutlineColor = Color3.new(0, 0, 0)
+    text.Color = Color3.new(255, 255, 255)
+    return text
+end
+
+local function FormatDistance(distance)
+    return tostring(math.floor(distance)) .. "m"
+end
+
+local function CreateDistanceTag()
+    local text = Drawing.new("Text")
+    text.Visible = false
+    text.Size = 12
+    text.Center = true
+    text.Outline = true
+    text.OutlineColor = Color3.new(0, 0, 0)
+    text.Color = Color3.new(255, 255, 255)
+    return text
+end
+
+-- Menu
+local text = Drawing.new("Text")
+text.Visible = true
+text.Text = "Kitty ESP V0.1"
+text.Outline = true
+text.Position = Vector2.new(5, 5)
+
+-- Keybinds
 local keybinds = {}
 
+-- Keybinds Helper
 function keybinds:AddKeybind(key, callback, options)
     options = options or {}
     local isToggle = options.toggle or false
@@ -41,6 +93,7 @@ function keybinds:AddKeybind(key, callback, options)
     end
 end
 
+-- Register Keybinds
 keybinds:AddKeybind(Enum.KeyCode.Delete, function(state)
     Settings.MaxDistance += 500
     print("Increasing max distance: ", Settings.MaxDistance)
@@ -51,44 +104,18 @@ keybinds:AddKeybind(Enum.KeyCode.Insert, function(state)
     print("Decreasing max distance: ", Settings.MaxDistance)
 end, {toggle = true})
 
-local function CalculateTextSize(distance)
-    return math.max(10, math.min(16, 20 - (distance / 100)))
-end
+-- ESP VAR
+local boxes = {}
+local nameTags = {}
+local distanceTags = {}
+local zombies = {}
+local zombieNameTags = {}
+local zombieDistanceTags = {}
+local corps = {}
+local corpsNameTags = {}
+local corpsDistanceTags = {}
 
-local function CreateQuadBox(character, color)
-    local quad = Drawing.new("Quad")
-    quad.Visible = false
-    quad.Color = color
-    quad.Thickness = 2
-    quad.Filled = false
-    
-    return quad
-end
-
-local function CreateNameTag()
-    local text = Drawing.new("Text")
-    text.Visible = false
-    text.Size = 12
-    text.Center = true
-    text.Outline = true
-    text.OutlineColor = Color3.new(0, 0, 0)
-    return text
-end
-
-local function FormatDistance(distance)
-    return tostring(math.floor(distance)) .. "m"
-end
-
-local function CreateDistanceTag()
-    local text = Drawing.new("Text")
-    text.Visible = false
-    text.Size = 12
-    text.Center = true
-    text.Outline = true
-    text.OutlineColor = Color3.new(0, 0, 0)
-    return text
-end
-
+-- Helper ESP function
 local function UpdateESP(quad, nameTag, distanceTag, character, displayName)
     local head = character:FindFirstChild("Head")
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
@@ -103,35 +130,27 @@ local function UpdateESP(quad, nameTag, distanceTag, character, displayName)
 
     local distance = (workspace.CurrentCamera.CFrame.Position - humanoidRootPart.Position).Magnitude
 
-    if not head or not humanoidRootPart or humanoid and humanoid.Health <= 0 or distance > Settings.MaxDistance then
+    if humanoid and humanoid.Health <= 0 or distance > Settings.MaxDistance then
         quad.Visible = false
-        if nameTag then
-            nameTag.Visible = false
-        end
-        if distanceTag then
-            distanceTag.Visible = false
-        end
+        if nameTag then nameTag.Visible = false end
+        if distanceTag then distanceTag.Visible = false end
         return
     end
     
-    local headPos, headVisible = workspace.CurrentCamera:WorldToViewportPoint(head.Position + Vector3.new(0, 1, 0))
-    local feetPos, feetVisible = workspace.CurrentCamera:WorldToViewportPoint(humanoidRootPart.Position - Vector3.new(0, 4, 0))
+    local headPos, headVisible = workspace.CurrentCamera:WorldToViewportPoint(head.Position + Vector3.new(0, 2, 0))
+    local feetPos, feetVisible = workspace.CurrentCamera:WorldToViewportPoint(humanoidRootPart.Position - Vector3.new(0, 5, 0))
     
     if not headVisible or not feetVisible or headPos.Z < 0 or feetPos.Z < 0 then
         quad.Visible = false
-        if nameTag then
-            nameTag.Visible = false
-        end
-        if distanceTag then
-            distanceTag.Visible = false
-        end
+        if nameTag then nameTag.Visible = false end
+        if distanceTag then distanceTag.Visible = false end
         return
     end
     
     local height = math.abs(headPos.Y - feetPos.Y)
-    local width = height / 2
+    local width = height / 2  -- Fixed box ratio
     
-    -- Update box
+    -- Update box with proper sizing
     quad.PointA = Vector2.new(headPos.X - width/2, headPos.Y)
     quad.PointB = Vector2.new(headPos.X + width/2, headPos.Y)
     quad.PointC = Vector2.new(feetPos.X + width/2, feetPos.Y)
@@ -139,42 +158,42 @@ local function UpdateESP(quad, nameTag, distanceTag, character, displayName)
     
     quad.Visible = true
     
-
     local textSize = CalculateTextSize(distance)
+    
+    -- Update name tag (Unnamed ESP positioning)
     if nameTag then
         nameTag.Text = displayName
         nameTag.Size = textSize
-        nameTag.Position = Vector2.new(headPos.X, headPos.Y - 18) -- Position above head
-        nameTag.Color = quad.Color
+        nameTag.Outline = true
+        
+        -- Position above the character using calculated upper position
+        nameTag.Position = Vector2.new(headPos.X, headPos.Y -textSize )
         nameTag.Visible = true
     end
+    
+    -- Update distance tag (positioned at bottom)
     if distanceTag then
         distanceTag.Text = FormatDistance(distance)
         distanceTag.Size = textSize
-        distanceTag.Position = Vector2.new(feetPos.X, feetPos.Y) -- Position under feet
-        distanceTag.Color = quad.Color
+        distanceTag.Outline = true
+        
+        -- Position at bottom of character (below feet)
+        distanceTag.Position = Vector2.new(feetPos.X, feetPos.Y)
         distanceTag.Visible = true
     end
 end
-
-local boxes = {}
-local nameTags = {}
-local distanceTags = {}
-local zombies = {}
-local zombieNameTags = {}
-local zombieDistanceTags = {}
 
 local function ConnectEsp(player: Player)
     if player == Players.LocalPlayer then return end
 
     if player.Character then
-        boxes[player] = CreateQuadBox(player.Character, (player.Team == Players.LocalPlayer.Team) and Settings.BoxColorTeammates or Settings.BoxColor)
+        boxes[player] = CreateQuadBox(player.Character, (player.TeamColor == Players.LocalPlayer.TeamColor) and Settings.BoxColorTeammates or Settings.BoxColor)
         nameTags[player] = CreateNameTag()
         distanceTags[player] = CreateDistanceTag()
     end
 
     player.CharacterAdded:Connect(function(character)
-        boxes[player] = CreateQuadBox(character, (player.Team == Players.LocalPlayer.Team) and Settings.BoxColorTeammates or Settings.BoxColor)
+        boxes[player] = CreateQuadBox(character, (player.TeamColor == Players.LocalPlayer.TeamColor) and Settings.BoxColorTeammates or Settings.BoxColor)
         nameTags[player] = CreateNameTag()
         distanceTags[player] = CreateDistanceTag()
     end)
@@ -210,6 +229,7 @@ local function ConnectEsp(player: Player)
     end)
 end
 
+-- Handle Players
 for _, player in pairs(game.Players:GetPlayers()) do
     ConnectEsp(player)
 end
@@ -217,44 +237,99 @@ game.Players.PlayerAdded:Connect(function(player)
     ConnectEsp(player)
 end)
 
-local text = Drawing.new("Text")
-text.Visible = true
-text.Text = "Kitty ESP V0.1"
-text.Outline = true
-text.Position = Vector2.new(5, 5)
-
-local function renderZombies()
-    for _, zombie: Model in ipairs(workspace:WaitForChild("Zombies"):GetChildren()) do
-        local atttribute = zombie:GetAttribute("ID")
-        if atttribute then
-            UpdateESP(zombies[atttribute], zombieNameTags[atttribute], zombieDistanceTags[atttribute], zombie, "Zombie")
-        else
-            atttribute = HttpService:GenerateGUID(false)
-            zombie:SetAttribute("ID", atttribute)
-            zombies[atttribute] = CreateQuadBox(zombie, Settings.BoxZombieColor)
-            zombieNameTags[atttribute] = CreateNameTag()
-            zombieDistanceTags[atttribute] = CreateDistanceTag()
-            zombie.Destroying:Connect(function()
-                if zombies[atttribute] then
-                    zombies[atttribute]:Remove()
-                    zombies[atttribute] = nil
-                end
-                if zombieNameTags[atttribute] then
-                    zombieNameTags[atttribute]:Remove()
-                    zombieNameTags[atttribute] = nil
-                end
-                if zombieDistanceTags[atttribute] then
-                    zombieDistanceTags[atttribute]:Remove()
-                    zombieDistanceTags[atttribute] = nil
-                end
-            end)
+-- Handle zombies
+for _, zombie in ipairs(workspace.Zombies:GetChildren()) do
+    zombies[zombie] = CreateQuadBox(zombie, Settings.BoxZombieColor)
+    zombieNameTags[zombie] = CreateNameTag()
+    zombieDistanceTags[zombie] = CreateDistanceTag()
+    zombie.Destroying:Connect(function()
+        if zombies[zombie] then
+            zombies[zombie]:Remove()
+            zombies[zombie] = nil
         end
-    end
+        if zombieNameTags[zombie] then
+            zombieNameTags[zombie]:Remove()
+            zombieNameTags[zombie] = nil
+        end
+        if zombieDistanceTags[zombie] then
+            zombieDistanceTags[zombie]:Remove()
+            zombieDistanceTags[zombie] = nil
+        end
+    end)
 end
+workspace.Zombies.ChildAdded:Connect(function(zombie: Model)
+    zombies[zombie] = CreateQuadBox(zombie, Settings.BoxZombieColor)
+    zombieNameTags[zombie] = CreateNameTag()
+    zombieDistanceTags[zombie] = CreateDistanceTag()
+    zombie.Destroying:Connect(function()
+        if zombies[zombie] then
+            zombies[zombie]:Remove()
+            zombies[zombie] = nil
+        end
+        if zombieNameTags[zombie] then
+            zombieNameTags[zombie]:Remove()
+            zombieNameTags[zombie] = nil
+        end
+        if zombieDistanceTags[zombie] then
+            zombieDistanceTags[zombie]:Remove()
+            zombieDistanceTags[zombie] = nil
+        end
+    end)
+end)
 
+-- Handle Corps
+for _, corp in ipairs(workspace.Corpses:GetChildren()) do
+    local isPlayer = corp:GetAttribute("InteractId") ~= nil
+    corps[corp] = CreateQuadBox(corp, isPlayer and Settings.BoxPlayerCorpsColor or Settings.BoxZombieCorpsColor)
+    corpsNameTags[corp] = CreateNameTag()
+    corpsDistanceTags[corp] = CreateDistanceTag()
+    corp.Destroying:Connect(function()
+        if corps[corp] then
+            corps[corp]:Remove()
+            corps[corp] = nil
+        end
+        if corpsNameTags[corp] then
+            corpsNameTags[corp]:Remove()
+            corpsNameTags[corp] = nil
+        end
+        if corpsDistanceTags[corp] then
+            corpsDistanceTags[corp]:Remove()
+            corpsDistanceTags[corp] = nil
+        end
+    end)
+end
+workspace.Corpses.ChildAdded:Connect(function(corp: Model)
+    local isPlayer = corp:GetAttribute("InteractId") ~= nil
+    corps[corp] = CreateQuadBox(corp, isPlayer and Settings.BoxPlayerCorpsColor or Settings.BoxZombieCorpsColor)
+    corpsNameTags[corp] = CreateNameTag()
+    corpsDistanceTags[corp] = CreateDistanceTag()
+    corp.Destroying:Connect(function()
+        if corps[corp] then
+            corps[corp]:Remove()
+            corps[corp] = nil
+        end
+        if corpsNameTags[corp] then
+            corpsNameTags[corp]:Remove()
+            corpsNameTags[corp] = nil
+        end
+        if corpsDistanceTags[corp] then
+            corpsDistanceTags[corp]:Remove()
+            corpsDistanceTags[corp] = nil
+        end
+    end)
+end)
+
+-- Render ESP
 game:GetService("RunService").RenderStepped:Connect(function()
     -- Update zombies
-    renderZombies()
+    for zombie, box in pairs(zombies) do
+        UpdateESP(box, zombieNameTags[zombie], zombieDistanceTags[zombie], zombie, "Zombie")
+    end
+
+    -- Update corps
+    for corp, box in pairs(corps) do
+        UpdateESP(box, corpsNameTags[corp], corpsDistanceTags[corp], corp, corp:GetAttribute("InteractId") ~= nil and corp.Name or "DeadZombie")
+    end
 
     -- Update players
     for player, box in pairs(boxes) do
