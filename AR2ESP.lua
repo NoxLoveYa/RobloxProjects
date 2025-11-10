@@ -53,12 +53,23 @@ local function CreateDistanceTag()
     return text
 end
 
+local function CreateGunTag()
+    local text = Drawing.new("Text")
+    text.Visible = false
+    text.Size = 12
+    text.Center = true
+    text.Outline = true
+    text.OutlineColor = Color3.new(0, 0, 0)
+    text.Color = Color3.new(255, 255, 255)
+    return text
+end
+
 -- Menu
 local text = Drawing.new("Text")
 text.Visible = true
 text.Text = "Kitty ESP V0.1"
 text.Outline = true
-text.Position = Vector2.new(5, 5)
+text.Position = Vector2.new(125, 5)
 
 -- Keybinds
 local keybinds = {}
@@ -108,6 +119,7 @@ end, {toggle = true})
 local boxes = {}
 local nameTags = {}
 local distanceTags = {}
+local gunTags = {}
 local zombies = {}
 local zombieNameTags = {}
 local zombieDistanceTags = {}
@@ -116,7 +128,7 @@ local corpsNameTags = {}
 local corpsDistanceTags = {}
 
 -- Helper ESP function
-local function UpdateESP(quad, nameTag, distanceTag, character, displayName)
+local function UpdateESP(quad, nameTag, distanceTag, gunTag, character, displayName)
     local head = character:FindFirstChild("Head")
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     local humanoid: Humanoid = character:FindFirstChild("Humanoid")
@@ -181,6 +193,15 @@ local function UpdateESP(quad, nameTag, distanceTag, character, displayName)
         distanceTag.Position = Vector2.new(feetPos.X, feetPos.Y)
         distanceTag.Visible = true
     end
+
+    -- Update gun tag (positioned under the distance tag)
+    if gunTag ~= nil then
+        local equipped = character.Equipped:GetChildren() 
+        distanceTag.Text = #equipped > 0 and equipped[1].Name or "Unarmed"
+        print(character.Name, ": ", #equipped)
+        distanceTag.Size = textSize
+        distanceTag.Outline = true
+    end
 end
 
 local function ConnectEsp(player: Player)
@@ -190,12 +211,14 @@ local function ConnectEsp(player: Player)
         boxes[player] = CreateQuadBox(player.Character, (player.TeamColor == Players.LocalPlayer.TeamColor) and Settings.BoxColorTeammates or Settings.BoxColor)
         nameTags[player] = CreateNameTag()
         distanceTags[player] = CreateDistanceTag()
+        gunTags[player] = CreateGunTag()
     end
 
     player.CharacterAdded:Connect(function(character)
         boxes[player] = CreateQuadBox(character, (player.TeamColor == Players.LocalPlayer.TeamColor) and Settings.BoxColorTeammates or Settings.BoxColor)
         nameTags[player] = CreateNameTag()
         distanceTags[player] = CreateDistanceTag()
+        gunTags[player] = CreateGunTag()
     end)
 
     player.CharacterRemoving:Connect(function()
@@ -211,6 +234,10 @@ local function ConnectEsp(player: Player)
             distanceTags[player]:Remove()
             distanceTags[player] = nil
         end
+        if gunTags[player] then
+            gunTags[player]:Remove()
+            gunTags[player] = nil
+        end
     end)
 
     game.Players.PlayerRemoving:Connect(function(player)
@@ -225,6 +252,10 @@ local function ConnectEsp(player: Player)
         if distanceTags[player] then
             distanceTags[player]:Remove()
             distanceTags[player] = nil
+        end
+        if gunTags[player] then
+            gunTags[player]:Remove()
+            gunTags[player] = nil
         end
     end)
 end
@@ -323,19 +354,19 @@ end)
 game:GetService("RunService").RenderStepped:Connect(function()
     -- Update zombies
     for zombie, box in pairs(zombies) do
-        UpdateESP(box, zombieNameTags[zombie], zombieDistanceTags[zombie], zombie, "Zombie")
+        UpdateESP(box, zombieNameTags[zombie], zombieDistanceTags[zombie], nil, zombie, "Zombie")
     end
 
     -- Update corps
     for corp, box in pairs(corps) do
-        UpdateESP(box, corpsNameTags[corp], corpsDistanceTags[corp], corp, corp:GetAttribute("InteractId") ~= nil and corp.Name or "DeadZombie")
+        UpdateESP(box, corpsNameTags[corp], corpsDistanceTags[corp], nil, corp, corp:GetAttribute("InteractId") ~= nil and corp.Name or "DeadZombie")
     end
 
     -- Update players
     for player, box in pairs(boxes) do
-        UpdateESP(box, nameTags[player], distanceTags[player], player.Character, player.Name)
+        UpdateESP(box, nameTags[player], distanceTags[player], gunTags[player], player.Character, player.Name)
     end
     
     -- Update watermark color
-    text.Color = Color3.fromHSV(math.sin(tick()) * 0.5 + 0.5, 0.8, 1)
+    text.Color = Color3.fromHSV(math.sin(tick() * 1.5) * 0.5 + 0.5, 0.8, 1)
 end)
