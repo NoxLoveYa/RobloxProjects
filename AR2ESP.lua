@@ -219,8 +219,8 @@ local function UpdateESP(quad, nameTag, distanceTag, gunTag, healthTag, characte
         gunTag.Outline = true
 
         -- Position at bottom of character (below feet)
-        distanceTag.Position = Vector2.new(feetPos.X, feetPos.Y - textSize * 2)
-        distanceTag.Visible = true
+        gunTag.Position = Vector2.new(feetPos.X, feetPos.Y + textSize * 2)
+        gunTag.Visible = true
     end
 
     -- Update health tag (positioned on the left side of box)
