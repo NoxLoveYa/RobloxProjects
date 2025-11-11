@@ -151,6 +151,7 @@ local function UpdateESP(quad, nameTag, distanceTag, gunTag, healthTag, characte
         quad.Visible = false
         if nameTag then nameTag.Visible = false end
         if distanceTag then distanceTag.Visible = false end
+        if gunTag then gunTag.Visible = false end
         if healthTag then healthTag.Visible = false end
         return
     end
@@ -161,6 +162,7 @@ local function UpdateESP(quad, nameTag, distanceTag, gunTag, healthTag, characte
         quad.Visible = false
         if nameTag then nameTag.Visible = false end
         if distanceTag then distanceTag.Visible = false end
+        if gunTag then gunTag.Visible = false end
         if healthTag then healthTag.Visible = false end
         return
     end
@@ -172,12 +174,13 @@ local function UpdateESP(quad, nameTag, distanceTag, gunTag, healthTag, characte
         quad.Visible = false
         if nameTag then nameTag.Visible = false end
         if distanceTag then distanceTag.Visible = false end
+        if gunTag then gunTag.Visible = false end
         if healthTag then healthTag.Visible = false end
         return
     end
     
     local height = math.abs(headPos.Y - feetPos.Y)
-    local width = height / 2  -- Fixed box ratio
+    local width = height / 2
     
     -- Update box with proper sizing
     quad.PointA = Vector2.new(headPos.X - width/2, headPos.Y)
@@ -219,7 +222,7 @@ local function UpdateESP(quad, nameTag, distanceTag, gunTag, healthTag, characte
         gunTag.Outline = true
 
         -- Position at bottom of character (below feet)
-        gunTag.Position = Vector2.new(feetPos.X, feetPos.Y + textSize * 2)
+        gunTag.Position = Vector2.new(feetPos.X, feetPos.Y + textSize)
         gunTag.Visible = true
     end
 
@@ -246,7 +249,7 @@ local function UpdateESP(quad, nameTag, distanceTag, gunTag, healthTag, characte
         end
         
         -- Position on the left side of the box
-        healthTag.Position = Vector2.new(headPos.X - width/2 - textSize, headPos.Y - textSize)
+        healthTag.Position = Vector2.new(headPos.X - width/2 - textSize, headPos.Y + height / 6)
         healthTag.Visible = true
     end
 end
