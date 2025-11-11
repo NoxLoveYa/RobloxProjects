@@ -2,6 +2,8 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 
+local GUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/NoxLoveYa/RobloxProjects/refs/heads/main/librarys/uilibrary.lua"))()
+
 local Settings = {
     BoxColorTeammates = Color3.new(0, 0.5, 1),
     BoxColor = Color3.new(1, 0.5, 0),
@@ -10,7 +12,13 @@ local Settings = {
     BoxPlayerCorpsColor = Color3.new(1, 0.470588, 0.647058),
     BoxSize = 2,
     MaxDistance = 500,
-    YOffset = 0
+    YOffset = 0,
+    ShowBox = true,
+    ShowName = true,
+    ShowDistance = true,
+    ShowGun = true,
+    ShowHealth = true,
+    TeamCheck = false
 }
 
 local function CalculateTextSize(distance)
@@ -422,23 +430,233 @@ workspace.Corpses.ChildAdded:Connect(function(corp: Model)
     end)
 end)
 
+-- Create Menu
+local window = GUI:Load({
+    sizex = 500,
+    sizey = 550,
+    theme = "AirHub",
+    folder = "AR2ESP",
+    extension = "cfg"
+})
+
+-- General Tab
+local generalTab = window:Tab("General")
+
+local generalSection = generalTab:Section({
+    name = "Main Settings",
+    side = "left"
+})
+
+generalSection:Toggle({
+    name = "Enabled",
+    default = true,
+    flag = "esp_enabled",
+    callback = function(state)
+        -- Toggle entire ESP visibility
+        for _, box in pairs(boxes) do
+            box.Visible = state
+        end
+        for _, box in pairs(zombies) do
+            box.Visible = state
+        end
+        for _, box in pairs(corps) do
+            box.Visible = state
+        end
+    end
+})
+
+generalSection:Toggle({
+    name = "Team Check",
+    default = false,
+    flag = "esp_teamcheck",
+    callback = function(state)
+        Settings.TeamCheck = state
+        -- Re-color all player boxes based on team check
+        for player, box in pairs(boxes) do
+            if player.Character then
+                local isTeammate = player.TeamColor == Players.LocalPlayer.TeamColor
+                if state and isTeammate then
+                    box.Color = Settings.BoxColorTeammates
+                else
+                    box.Color = Settings.BoxColor
+                end
+            end
+        end
+    end
+})
+
+-- ESP Tab
+local espTab = window:Tab("ESP")
+
+-- Display Options Section
+local displaySection = espTab:Section({
+    name = "Display Options",
+    side = "left"
+})
+
+displaySection:Slider({
+    name = "Max Distance",
+    min = 100,
+    max = 5000,
+    float = 50,
+    default = Settings.MaxDistance,
+    text = "[value]m",
+    flag = "esp_distance",
+    callback = function(value)
+        Settings.MaxDistance = value
+    end
+})
+
+displaySection:Toggle({
+    name = "Show Boxes",
+    default = true,
+    flag = "esp_show_box",
+    callback = function(state)
+        Settings.ShowBox = state
+    end
+})
+
+displaySection:Toggle({
+    name = "Show Names",
+    default = true,
+    flag = "esp_show_name",
+    callback = function(state)
+        Settings.ShowName = state
+    end
+})
+
+displaySection:Toggle({
+    name = "Show Distance",
+    default = true,
+    flag = "esp_show_distance",
+    callback = function(state)
+        Settings.ShowDistance = state
+    end
+})
+
+displaySection:Toggle({
+    name = "Show Gun",
+    default = true,
+    flag = "esp_show_gun",
+    callback = function(state)
+        Settings.ShowGun = state
+    end
+})
+
+displaySection:Toggle({
+    name = "Show Health",
+    default = true,
+    flag = "esp_show_health",
+    callback = function(state)
+        Settings.ShowHealth = state
+    end
+})
+
+-- Colors Section (Left side)
+local colorSection = espTab:Section({
+    name = "Colors",
+    side = "left"
+})
+
+colorSection:ColorPicker({
+    name = "Teammate Color",
+    default = Settings.BoxColorTeammates,
+    flag = "color_teammates",
+    callback = function(color)
+        Settings.BoxColorTeammates = color
+    end
+})
+
+colorSection:ColorPicker({
+    name = "Enemy Color",
+    default = Settings.BoxColor,
+    flag = "color_enemies",
+    callback = function(color)
+        Settings.BoxColor = color
+    end
+})
+
+colorSection:ColorPicker({
+    name = "Zombie Color",
+    default = Settings.BoxZombieColor,
+    flag = "color_zombies",
+    callback = function(color)
+        Settings.BoxZombieColor = color
+    end
+})
+
+colorSection:ColorPicker({
+    name = "Zombie Corpse Color",
+    default = Settings.BoxZombieCorpsColor,
+    flag = "color_zombie_corps",
+    callback = function(color)
+        Settings.BoxZombieCorpsColor = color
+    end
+})
+
+colorSection:ColorPicker({
+    name = "Player Corpse Color",
+    default = Settings.BoxPlayerCorpsColor,
+    flag = "color_player_corps",
+    callback = function(color)
+        Settings.BoxPlayerCorpsColor = color
+    end
+})
+
 -- Render ESP
 game:GetService("RunService").RenderStepped:Connect(function()
+    local espEnabled = GUI.flags.esp_enabled ~= false
+    local showBox = GUI.flags.esp_show_box ~= false
+    local showName = GUI.flags.esp_show_name ~= false
+    local showDistance = GUI.flags.esp_show_distance ~= false
+    local showGun = GUI.flags.esp_show_gun ~= false
+    local showHealth = GUI.flags.esp_show_health ~= false
+    
     -- Update zombies
     for zombie, box in pairs(zombies) do
-        UpdateESP(box, zombieNameTags[zombie], zombieDistanceTags[zombie], nil, zombieHealthTags[zombie], zombie, "Zombie")
+        if espEnabled and showBox then
+            box.Color = Settings.BoxZombieColor
+            UpdateESP(box, showName and zombieNameTags[zombie] or nil, showDistance and zombieDistanceTags[zombie] or nil, nil, showHealth and zombieHealthTags[zombie] or nil, zombie, "Zombie")
+        else
+            box.Visible = false
+            if zombieNameTags[zombie] then zombieNameTags[zombie].Visible = false end
+            if zombieDistanceTags[zombie] then zombieDistanceTags[zombie].Visible = false end
+            if zombieHealthTags[zombie] then zombieHealthTags[zombie].Visible = false end
+        end
     end
 
     -- Update corps
     for corp, box in pairs(corps) do
-        UpdateESP(box, corpsNameTags[corp], corpsDistanceTags[corp], nil, nil, corp, corp:GetAttribute("InteractId") ~= nil and corp.Name or "DeadZombie")
+        if espEnabled and showBox then
+            local isPlayer = corp:GetAttribute("InteractId") ~= nil
+            box.Color = isPlayer and Settings.BoxPlayerCorpsColor or Settings.BoxZombieCorpsColor
+            UpdateESP(box, showName and corpsNameTags[corp] or nil, showDistance and corpsDistanceTags[corp] or nil, nil, nil, corp, corp:GetAttribute("InteractId") ~= nil and corp.Name or "DeadZombie")
+        else
+            box.Visible = false
+            if corpsNameTags[corp] then corpsNameTags[corp].Visible = false end
+            if corpsDistanceTags[corp] then corpsDistanceTags[corp].Visible = false end
+            if corpsHealthTags[corp] then corpsHealthTags[corp].Visible = false end
+        end
     end
 
     -- Update players
     for player, box in pairs(boxes) do
-        UpdateESP(box, nameTags[player], distanceTags[player], gunTags[player], healthTags[player], player.Character, player.Name)
+        if espEnabled and showBox and player.Character then
+            local isTeammate = player.TeamColor == Players.LocalPlayer.TeamColor
+            box.Color = isTeammate and Settings.BoxColorTeammates or Settings.BoxColor
+            UpdateESP(box, showName and nameTags[player] or nil, showDistance and distanceTags[player] or nil, showGun and gunTags[player] or nil, showHealth and healthTags[player] or nil, player.Character, player.Name)
+        else
+            box.Visible = false
+            if nameTags[player] then nameTags[player].Visible = false end
+            if distanceTags[player] then distanceTags[player].Visible = false end
+            if gunTags[player] then gunTags[player].Visible = false end
+            if healthTags[player] then healthTags[player].Visible = false end
+        end
     end
     
     -- Update watermark color
     text.Color = Color3.fromHSV(math.sin(tick() * 1.5) * 0.5 + 0.5, 0.8, 1)
 end)
+
+task.wait(0.1) -- Small delay to ensure menu is fully loaded
+GUI:Close() -- This toggles it on (opens it)
