@@ -216,7 +216,7 @@ end)
 local window = GUI:Load({
     sizex = 300,
     sizey = 300,
-    theme = "AirHub",
+    theme = "Kitty",
     folder = "AR2ESP",
     extension = "cfg"
 })
