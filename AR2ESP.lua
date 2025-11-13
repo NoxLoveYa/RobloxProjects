@@ -196,45 +196,43 @@ local function UpdateESP(quad, nameTag, distanceTag, gunTag, healthTag, characte
     quad.PointC = Vector2.new(feetPos.X + width/2, feetPos.Y)
     quad.PointD = Vector2.new(feetPos.X - width/2, feetPos.Y)
     
-    quad.Visible = true
+    -- RESPECT THE BOX SETTING
+    quad.Visible = Settings.ShowBox
     
     local textSize = CalculateTextSize(distance)
     
-    -- Update name tag (Unnamed ESP positioning)
+    -- Update name tag
     if nameTag then
         nameTag.Text = displayName
         nameTag.Size = textSize
         nameTag.Outline = true
-        
-        -- Position above the character using calculated upper position
-        nameTag.Position = Vector2.new(headPos.X, headPos.Y -textSize )
-        nameTag.Visible = true
+        nameTag.Position = Vector2.new(headPos.X, headPos.Y - textSize)
+        -- RESPECT THE NAME SETTING
+        nameTag.Visible = Settings.ShowName
     end
     
-    -- Update distance tag (positioned at bottom)
+    -- Update distance tag
     if distanceTag then
         distanceTag.Text = FormatDistance(distance)
         distanceTag.Size = textSize
         distanceTag.Outline = true
-        
-        -- Position at bottom of character (below feet)
         distanceTag.Position = Vector2.new(feetPos.X, feetPos.Y)
-        distanceTag.Visible = true
+        -- RESPECT THE DISTANCE SETTING
+        distanceTag.Visible = Settings.ShowDistance
     end
 
-    -- Update gun tag (positioned under the distance tag)
-    if gunTag ~= nil then
-        local equipped = character.Equipped:GetChildren() 
+    -- Update gun tag
+    if gunTag then
+        local equipped = character:FindFirstChild("Equipped") and character.Equipped:GetChildren() or {}
         gunTag.Text = #equipped > 0 and equipped[1].Name or "Unarmed"
         gunTag.Size = textSize
         gunTag.Outline = true
-
-        -- Position at bottom of character (below feet)
         gunTag.Position = Vector2.new(feetPos.X, feetPos.Y + textSize)
-        gunTag.Visible = true
+        -- RESPECT THE GUN SETTING
+        gunTag.Visible = Settings.ShowGun
     end
 
-    -- Update health tag (positioned on the left side of box)
+    -- Update health tag
     if healthTag then
         if not humanoid then
             healthTag.Visible = false
@@ -256,9 +254,9 @@ local function UpdateESP(quad, nameTag, distanceTag, gunTag, healthTag, characte
             healthTag.Color = Color3.fromRGB(255, 0, 0)  -- Red
         end
         
-        -- Position on the left side of the box
         healthTag.Position = Vector2.new(headPos.X - width/2 - textSize, headPos.Y + height / 6)
-        healthTag.Visible = true
+        -- RESPECT THE HEALTH SETTING
+        healthTag.Visible = Settings.ShowHealth
     end
 end
 
@@ -606,51 +604,67 @@ colorSection:ColorPicker({
 -- Render ESP
 game:GetService("RunService").RenderStepped:Connect(function()
     local espEnabled = GUI.flags.esp_enabled ~= false
-    local showBox = GUI.flags.esp_show_box ~= false
-    local showName = GUI.flags.esp_show_name ~= false
-    local showDistance = GUI.flags.esp_show_distance ~= false
-    local showGun = GUI.flags.esp_show_gun ~= false
-    local showHealth = GUI.flags.esp_show_health ~= false
     
-    -- Update zombies
+    -- Update settings from GUI flags
+    Settings.MaxDistance = GUI.flags.esp_distance or Settings.MaxDistance
+    Settings.ShowBox = GUI.flags.esp_show_box ~= false
+    Settings.ShowName = GUI.flags.esp_show_name ~= false
+    Settings.ShowDistance = GUI.flags.esp_show_distance ~= false
+    Settings.ShowGun = GUI.flags.esp_show_gun ~= false
+    Settings.ShowHealth = GUI.flags.esp_show_health ~= false
+    Settings.TeamCheck = GUI.flags.esp_teamcheck ~= false
+    
+    -- Update colors from GUI
+    Settings.BoxColorTeammates = GUI.flags.color_teammates or Settings.BoxColorTeammates
+    Settings.BoxColor = GUI.flags.color_enemies or Settings.BoxColor
+    Settings.BoxZombieColor = GUI.flags.color_zombies or Settings.BoxZombieColor
+    Settings.BoxZombieCorpsColor = GUI.flags.color_zombie_corps or Settings.BoxZombieCorpsColor
+    Settings.BoxPlayerCorpsColor = GUI.flags.color_player_corps or Settings.BoxPlayerCorpsColor
+    
+    if not espEnabled then
+        -- Hide everything if ESP is disabled
+        for _, box in pairs(boxes) do box.Visible = false end
+        for _, box in pairs(zombies) do box.Visible = false end
+        for _, box in pairs(corps) do box.Visible = false end
+        for _, tag in pairs(nameTags) do tag.Visible = false end
+        for _, tag in pairs(distanceTags) do tag.Visible = false end
+        for _, tag in pairs(gunTags) do tag.Visible = false end
+        for _, tag in pairs(healthTags) do tag.Visible = false end
+        return
+    end
+    
+    -- Update zombies (always show regardless of team check)
     for zombie, box in pairs(zombies) do
-        if espEnabled and showBox then
-            box.Color = Settings.BoxZombieColor
-            UpdateESP(box, showName and zombieNameTags[zombie] or nil, showDistance and zombieDistanceTags[zombie] or nil, nil, showHealth and zombieHealthTags[zombie] or nil, zombie, "Zombie")
-        else
-            box.Visible = false
-            if zombieNameTags[zombie] then zombieNameTags[zombie].Visible = false end
-            if zombieDistanceTags[zombie] then zombieDistanceTags[zombie].Visible = false end
-            if zombieHealthTags[zombie] then zombieHealthTags[zombie].Visible = false end
-        end
+        -- APPLY COLOR UPDATE HERE
+        box.Color = Settings.BoxZombieColor
+        UpdateESP(box, zombieNameTags[zombie], zombieDistanceTags[zombie], nil, zombieHealthTags[zombie], zombie, "Zombie")
     end
 
-    -- Update corps
+    -- Update corps (always show regardless of team check)
     for corp, box in pairs(corps) do
-        if espEnabled and showBox then
-            local isPlayer = corp:GetAttribute("InteractId") ~= nil
-            box.Color = isPlayer and Settings.BoxPlayerCorpsColor or Settings.BoxZombieCorpsColor
-            UpdateESP(box, showName and corpsNameTags[corp] or nil, showDistance and corpsDistanceTags[corp] or nil, nil, nil, corp, corp:GetAttribute("InteractId") ~= nil and corp.Name or "DeadZombie")
-        else
-            box.Visible = false
-            if corpsNameTags[corp] then corpsNameTags[corp].Visible = false end
-            if corpsDistanceTags[corp] then corpsDistanceTags[corp].Visible = false end
-            if corpsHealthTags[corp] then corpsHealthTags[corp].Visible = false end
-        end
+        local isPlayer = corp:GetAttribute("InteractId") ~= nil
+        -- APPLY COLOR UPDATE HERE
+        box.Color = isPlayer and Settings.BoxPlayerCorpsColor or Settings.BoxZombieCorpsColor
+        UpdateESP(box, corpsNameTags[corp], corpsDistanceTags[corp], nil, nil, corp, isPlayer and "Player Corpse" or "Zombie Corpse")
     end
 
-    -- Update players
+    -- Update players (respect team check)
     for player, box in pairs(boxes) do
-        if espEnabled and showBox and player.Character then
+        if player.Character then
             local isTeammate = player.TeamColor == Players.LocalPlayer.TeamColor
-            box.Color = isTeammate and Settings.BoxColorTeammates or Settings.BoxColor
-            UpdateESP(box, showName and nameTags[player] or nil, showDistance and distanceTags[player] or nil, showGun and gunTags[player] or nil, showHealth and healthTags[player] or nil, player.Character, player.Name)
-        else
-            box.Visible = false
-            if nameTags[player] then nameTags[player].Visible = false end
-            if distanceTags[player] then distanceTags[player].Visible = false end
-            if gunTags[player] then gunTags[player].Visible = false end
-            if healthTags[player] then healthTags[player].Visible = false end
+            
+            -- Skip teammates if team check is enabled
+            if Settings.TeamCheck and isTeammate then
+                box.Visible = false
+                if nameTags[player] then nameTags[player].Visible = false end
+                if distanceTags[player] then distanceTags[player].Visible = false end
+                if gunTags[player] then gunTags[player].Visible = false end
+                if healthTags[player] then healthTags[player].Visible = false end
+            else
+                -- APPLY COLOR UPDATE HERE
+                box.Color = isTeammate and Settings.BoxColorTeammates or Settings.BoxColor
+                UpdateESP(box, nameTags[player], distanceTags[player], gunTags[player], healthTags[player], player.Character, player.Name)
+            end
         end
     end
     
