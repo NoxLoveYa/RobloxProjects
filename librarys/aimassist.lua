@@ -132,7 +132,7 @@ function AimAssist:Start()
         end
         if self.Settings.TriggerbotEnabled then
             local rayOrigin = self.Camera.CFrame.Position
-            local rayDirection = (targetPart.Position - rayOrigin).Unit * 1000
+            local rayDirection = (self.Camera.CFrame.LookVector).Unit * 1000
             local raycastParams = RaycastParams.new()
             raycastParams.FilterDescendantsInstances = {self.LocalPlayer.Character}
             raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
