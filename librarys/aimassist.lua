@@ -61,13 +61,14 @@ function AimAssist:GetBestTarget()
         if self.Settings.VisibleCheck then
             local params = RaycastParams.new()
             params.FilterDescendantsInstances =
-                { self.LocalPlayer.Character, player.Character }
+                { self.LocalPlayer.Character }
             params.FilterType = Enum.RaycastFilterType.Exclude
             local result = workspace:Raycast(
                 cameraPos,
-                (targetPart.Position - cameraPos).Unit * 500,
+                (targetPart.Position - cameraPos).Unit * 10000,
                 params
             )
+            printconsole(result)
             if result then
                 continue
             end
