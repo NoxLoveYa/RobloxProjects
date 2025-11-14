@@ -68,7 +68,7 @@ function AimAssist:GetBestTarget()
                 (targetPart.Position - cameraPos).Unit * 10000,
                 params
             )
-            printconsole(result)
+            print(result)
             if result then
                 continue
             end
