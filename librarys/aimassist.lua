@@ -134,14 +134,24 @@ function AimAssist:Start()
             local rayOrigin = self.Camera.CFrame.Position
             local rayDirection = (self.Camera.CFrame.LookVector).Unit * 1000
             local raycastParams = RaycastParams.new()
+            
+            -- Exclude only our own character (so we hit everything else)
             raycastParams.FilterDescendantsInstances = {self.LocalPlayer.Character}
-            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist  -- This is actually correct!
 
-            local raycastResult =
-                workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+            local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
 
             if raycastResult then
-                print(raycastResult.Instance)
+                local hitInstance = raycastResult.Instance
+                -- Check if we hit a player (not a wall)
+                local character = hitInstance:FindFirstAncestorOfClass("Model")
+                if character and character:FindFirstChild("Humanoid") then
+                    local player = Players:GetPlayerFromCharacter(character)
+                    if player and player ~= self.LocalPlayer then
+                        print("Triggerbot: Aiming at player", player.Name)
+                        -- Auto-shoot logic would go here
+                    end
+                end
             end
         end
     end)
