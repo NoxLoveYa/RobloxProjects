@@ -353,7 +353,7 @@ local aimAssistSection = aimAssistTab:Section({
 
 aimAssistSection:Toggle({
     name = 'Aim Assist',
-    default = false,
+    default = true,
     flag = 'aim_assist_enabled',
 })
 
@@ -439,7 +439,7 @@ RunService.RenderStepped:Connect(function()
     Settings.BoxColor = GUI.flags.color_players or Settings.BoxColor
 
     -- Update aim assist settings from GUI flags
-    MyAimAssist.Settings.Enabled = GUI.flags.aim_assist_enabled or false
+    MyAimAssist.Settings.Enabled = GUI.flags.aim_assist_enabled or true
     MyAimAssist.Settings.Strength = GUI.flags.aim_assist_strength or 10.0
     MyAimAssist.Settings.Smoothing = GUI.flags.aim_assist_smoothing or 0.0
     MyAimAssist.Settings.FOV = GUI.flags.aim_assist_fov or 30
