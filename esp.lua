@@ -294,10 +294,6 @@ generalSection:Toggle({
     flag = 'general_triggerbot',
 })
 
-generalSection:Label({
-    name = 'Toggle Menu: Right Alt',
-})
-
 -- ESP Tab
 local espTab = window:Tab('ESP')
 

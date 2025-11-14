@@ -148,8 +148,7 @@ function AimAssist:Start()
                 if character and character:FindFirstChild("Humanoid") then
                     local player = Players:GetPlayerFromCharacter(character)
                     if player and player ~= self.LocalPlayer then
-                        print("Triggerbot: Aiming at player", player.Name)
-                        -- Auto-shoot logic would go here
+                        mouse1click()
                     end
                 end
             end
