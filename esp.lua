@@ -1,10 +1,11 @@
 local Players = game:GetService("Players")
+local InputService = game:GetService("UserInputService")
 
 local GUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/NoxLoveYa/RobloxProjects/refs/heads/main/librarys/uilibrary.lua"))()
 
 local Settings = {
-    BoxColor = Color3.new(0, 0.5, 1),
-    MaxDistance = 500,
+    BoxColor = Color3.new(1, 0.113725, 0.380392),
+    MaxDistance = 2500,
     ShowBox = true,
     ShowName = true,
     ShowDistance = true,
@@ -68,33 +69,30 @@ text.Text = "Kitty ESP V0.1"
 text.Outline = true
 text.Position = Vector2.new(125, 5)
 
--- ESP Variables
-local boxes = {}
-local nameTags = {}
-local distanceTags = {}
-local healthTags = {}
+-- ESP Variables (new architecture)
+local esp = {} -- Main ESP table storing all player data
 
 -- Helper ESP function
-local function UpdateESP(quad, nameTag, distanceTag, healthTag, character, displayName)
+local function UpdateESP(playerData, character, displayName)
     local head = character:FindFirstChild("Head")
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     local humanoid = character:FindFirstChild("Humanoid")
 
     if not head or not humanoidRootPart then
-        quad.Visible = false
-        if nameTag then nameTag.Visible = false end
-        if distanceTag then distanceTag.Visible = false end
-        if healthTag then healthTag.Visible = false end
+        playerData.Box.Visible = false
+        if playerData.NameTag then playerData.NameTag.Visible = false end
+        if playerData.DistanceTag then playerData.DistanceTag.Visible = false end
+        if playerData.HealthTag then playerData.HealthTag.Visible = false end
         return
     end
 
     local distance = (workspace.CurrentCamera.CFrame.Position - humanoidRootPart.Position).Magnitude
 
     if humanoid and humanoid.Health <= 0 or distance > Settings.MaxDistance then
-        quad.Visible = false
-        if nameTag then nameTag.Visible = false end
-        if distanceTag then distanceTag.Visible = false end
-        if healthTag then healthTag.Visible = false end
+        playerData.Box.Visible = false
+        if playerData.NameTag then playerData.NameTag.Visible = false end
+        if playerData.DistanceTag then playerData.DistanceTag.Visible = false end
+        if playerData.HealthTag then playerData.HealthTag.Visible = false end
         return
     end
     
@@ -102,10 +100,10 @@ local function UpdateESP(quad, nameTag, distanceTag, healthTag, character, displ
     local feetPos, feetVisible = workspace.CurrentCamera:WorldToViewportPoint(humanoidRootPart.Position - Vector3.new(0, 5, 0))
     
     if not headVisible or not feetVisible or headPos.Z < 0 or feetPos.Z < 0 then
-        quad.Visible = false
-        if nameTag then nameTag.Visible = false end
-        if distanceTag then distanceTag.Visible = false end
-        if healthTag then healthTag.Visible = false end
+        playerData.Box.Visible = false
+        if playerData.NameTag then playerData.NameTag.Visible = false end
+        if playerData.DistanceTag then playerData.DistanceTag.Visible = false end
+        if playerData.HealthTag then playerData.HealthTag.Visible = false end
         return
     end
     
@@ -113,58 +111,58 @@ local function UpdateESP(quad, nameTag, distanceTag, healthTag, character, displ
     local width = height / 2
     
     -- Update box
-    quad.PointA = Vector2.new(headPos.X - width/2, headPos.Y)
-    quad.PointB = Vector2.new(headPos.X + width/2, headPos.Y)
-    quad.PointC = Vector2.new(feetPos.X + width/2, feetPos.Y)
-    quad.PointD = Vector2.new(feetPos.X - width/2, feetPos.Y)
+    playerData.Box.PointA = Vector2.new(headPos.X - width/2, headPos.Y)
+    playerData.Box.PointB = Vector2.new(headPos.X + width/2, headPos.Y)
+    playerData.Box.PointC = Vector2.new(feetPos.X + width/2, feetPos.Y)
+    playerData.Box.PointD = Vector2.new(feetPos.X - width/2, feetPos.Y)
     
-    quad.Visible = Settings.ShowBox
-    quad.Color = Settings.BoxColor
+    playerData.Box.Visible = Settings.ShowBox
+    playerData.Box.Color = Settings.BoxColor
     
     local textSize = CalculateTextSize(distance)
     
     -- Update name tag
-    if nameTag then
-        nameTag.Text = displayName
-        nameTag.Size = textSize
-        nameTag.Outline = true
-        nameTag.Position = Vector2.new(headPos.X, headPos.Y - textSize)
-        nameTag.Visible = Settings.ShowName
+    if playerData.NameTag then
+        playerData.NameTag.Text = displayName
+        playerData.NameTag.Size = textSize
+        playerData.NameTag.Outline = true
+        playerData.NameTag.Position = Vector2.new(headPos.X, headPos.Y - textSize)
+        playerData.NameTag.Visible = Settings.ShowName
     end
     
     -- Update distance tag
-    if distanceTag then
-        distanceTag.Text = FormatDistance(distance)
-        distanceTag.Size = textSize
-        distanceTag.Outline = true
-        distanceTag.Position = Vector2.new(feetPos.X, feetPos.Y)
-        distanceTag.Visible = Settings.ShowDistance
+    if playerData.DistanceTag then
+        playerData.DistanceTag.Text = FormatDistance(distance)
+        playerData.DistanceTag.Size = textSize
+        playerData.DistanceTag.Outline = true
+        playerData.DistanceTag.Position = Vector2.new(feetPos.X, feetPos.Y)
+        playerData.DistanceTag.Visible = Settings.ShowDistance
     end
 
     -- Update health tag
-    if healthTag then
+    if playerData.HealthTag then
         if not humanoid then
-            healthTag.Visible = false
+            playerData.HealthTag.Visible = false
             return
         end
         local healthPercent = humanoid and math.floor((humanoid.Health / humanoid.MaxHealth) * 100) or 0
-        healthTag.Text = healthPercent .. "%"
-        healthTag.Size = textSize
-        healthTag.Outline = true
+        playerData.HealthTag.Text = healthPercent .. "%"
+        playerData.HealthTag.Size = textSize
+        playerData.HealthTag.Outline = true
         
         -- Color gradient based on health
         if healthPercent > 75 then
-            healthTag.Color = Color3.fromRGB(0, 255, 0)  -- Green
+            playerData.HealthTag.Color = Color3.fromRGB(0, 255, 0)  -- Green
         elseif healthPercent > 50 then
-            healthTag.Color = Color3.fromRGB(255, 255, 0)  -- Yellow
+            playerData.HealthTag.Color = Color3.fromRGB(255, 255, 0)  -- Yellow
         elseif healthPercent > 25 then
-            healthTag.Color = Color3.fromRGB(255, 165, 0)  -- Orange
+            playerData.HealthTag.Color = Color3.fromRGB(255, 165, 0)  -- Orange
         else
-            healthTag.Color = Color3.fromRGB(255, 0, 0)  -- Red
+            playerData.HealthTag.Color = Color3.fromRGB(255, 0, 0)  -- Red
         end
         
-        healthTag.Position = Vector2.new(headPos.X - width/2 - textSize, headPos.Y + height / 6)
-        healthTag.Visible = Settings.ShowHealth
+        playerData.HealthTag.Position = Vector2.new(headPos.X - width/2 - textSize, headPos.Y + height / 6)
+        playerData.HealthTag.Visible = Settings.ShowHealth
     end
 end
 
@@ -172,33 +170,42 @@ local function ConnectEsp(player)
     -- Skip local player
     if player == Players.LocalPlayer then return end
 
+    local function CreatePlayerESP()
+        return {
+            Box = CreateQuadBox(),
+            NameTag = CreateNameTag(),
+            DistanceTag = CreateDistanceTag(),
+            HealthTag = CreateHealthTag()
+        }
+    end
+
     if player.Character then
-        boxes[player] = CreateQuadBox()
-        nameTags[player] = CreateNameTag()
-        distanceTags[player] = CreateDistanceTag()
-        healthTags[player] = CreateHealthTag()
+        esp[player] = CreatePlayerESP()
     end
 
     player.CharacterAdded:Connect(function(character)
-        boxes[player] = CreateQuadBox()
-        nameTags[player] = CreateNameTag()
-        distanceTags[player] = CreateDistanceTag()
-        healthTags[player] = CreateHealthTag()
+        esp[player] = CreatePlayerESP()
     end)
 
     player.CharacterRemoving:Connect(function()
-        if boxes[player] then boxes[player]:Remove() boxes[player] = nil end
-        if nameTags[player] then nameTags[player]:Remove() nameTags[player] = nil end
-        if distanceTags[player] then distanceTags[player]:Remove() distanceTags[player] = nil end
-        if healthTags[player] then healthTags[player]:Remove() healthTags[player] = nil end
+        if esp[player] then
+            for _, drawingObject in pairs(esp[player]) do
+                if drawingObject then
+                    drawingObject:Remove()
+                end
+            end
+            esp[player] = nil
+        end
     end)
 
     game.Players.PlayerRemoving:Connect(function(removedPlayer)
-        if removedPlayer == player then
-            if boxes[player] then boxes[player]:Remove() boxes[player] = nil end
-            if nameTags[player] then nameTags[player]:Remove() nameTags[player] = nil end
-            if distanceTags[player] then distanceTags[player]:Remove() distanceTags[player] = nil end
-            if healthTags[player] then healthTags[player]:Remove() healthTags[player] = nil end
+        if removedPlayer == player and esp[player] then
+            for _, drawingObject in pairs(esp[player]) do
+                if drawingObject then
+                    drawingObject:Remove()
+                end
+            end
+            esp[player] = nil
         end
     end)
 end
@@ -214,10 +221,10 @@ end)
 
 -- Create Menu
 local window = GUI:Load({
-    sizex = 300,
-    sizey = 300,
+    sizex = 550,
+    sizey = 450,
     theme = "Kitty",
-    folder = "AR2ESP",
+    folder = "ESP",
     extension = "cfg"
 })
 
@@ -304,17 +311,22 @@ game:GetService("RunService").RenderStepped:Connect(function()
     
     if not espEnabled then
         -- Hide everything if ESP is disabled
-        for _, box in pairs(boxes) do box.Visible = false end
-        for _, tag in pairs(nameTags) do tag.Visible = false end
-        for _, tag in pairs(distanceTags) do tag.Visible = false end
-        for _, tag in pairs(healthTags) do tag.Visible = false end
+        for _, playerData in pairs(esp) do
+            if playerData then
+                for _, drawingObject in pairs(playerData) do
+                    if drawingObject then
+                        drawingObject.Visible = false
+                    end
+                end
+            end
+        end
         return
     end
     
     -- Update players (skip local player)
-    for player, box in pairs(boxes) do
+    for player, playerData in pairs(esp) do
         if player.Character and player ~= Players.LocalPlayer then
-            UpdateESP(box, nameTags[player], distanceTags[player], healthTags[player], player.Character, player.Name)
+            UpdateESP(playerData, player.Character, player.Name)
         end
     end
     
@@ -323,4 +335,9 @@ game:GetService("RunService").RenderStepped:Connect(function()
 end)
 
 task.wait(0.1)
-GUI:Close()
+InputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.RightAlt then
+        GUI:Close()
+    end
+    print(input.KeyCode)
+end)
