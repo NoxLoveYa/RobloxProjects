@@ -370,7 +370,7 @@ aimAssistSection:Slider({
 aimAssistSection:Slider({
     name = 'Smoothing',
     min = 0,
-    max = 1,
+    max = 10.0,
     float = 0.1,
     default = 0,
     text = '[value]',
