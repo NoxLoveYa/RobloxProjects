@@ -20,6 +20,7 @@ function AimAssist.new()
         RequireMouseDown = false,
         TeamCheck = false,
         VisibleCheck = false,
+        TriggerbotEnabled = false,
     }
 
     -- Internal state
@@ -128,6 +129,20 @@ function AimAssist:Start()
             end
         else
             self.AimAssistActive = false
+        end
+        if self.Settings.TriggerbotEnabled then
+            local rayOrigin = self.Camera.CFrame.Position
+            local rayDirection = (targetPart.Position - rayOrigin).Unit * 1000
+            local raycastParams = RaycastParams.new()
+            raycastParams.FilterDescendantsInstances = {self.LocalPlayer.Character}
+            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+            local raycastResult =
+                workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+
+            if raycastResult then
+                print(raycastResult.Instance)
+            end
         end
     end)
     self.VisibleConnection = RunService.RenderStepped:Connect(function()
