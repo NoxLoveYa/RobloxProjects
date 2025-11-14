@@ -131,13 +131,48 @@ function AimAssist:Start()
             self.AimAssistActive = false
         end
     end)
-    self.VisibleConnection = RunSe
+    self.VisibleConnection = RunService.RenderStepped:Connect(function()
+        visiblePlayers = {}
+        for _, player in pairs(Players:GetPlayers()) do
+            if player == self.LocalPlayer then
+                continue
+            end
+            if not player.Character then
+                continue
+            end
+
+            local humanoid = player.Character:FindFirstChild('Humanoid')
+            local targetPart =
+                player.Character:FindFirstChild(self.Settings.TargetPart)
+
+            if not humanoid or humanoid.Health <= 0 or not targetPart then
+                continue
+            end
+
+            local rayOrigin = self.Camera.CFrame.Position
+            local rayDirection = (targetPart.Position - rayOrigin).Unit * 1000
+            local raycastParams = RaycastParams.new()
+            raycastParams.FilterDescendantsInstances = {self.LocalPlayer.Character}
+            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+            local raycastResult =
+                workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+
+            if raycastResult and raycastResult.Instance:IsDescendantOf(player.Character) then
+                visiblePlayers[player] = true
+            end
+        end
+    end)
 end
 
 function AimAssist:Stop()
     if self.Connection then
         self.Connection:Disconnect()
         self.Connection = nil
+    end
+    if self.VisibleConnection then
+        self.VisibleConnection:Disconnect()
+        self.VisibleConnection = nil
     end
     self.AimAssistActive = false
 end
