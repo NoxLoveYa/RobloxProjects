@@ -397,7 +397,7 @@ local aimAssistOptionsSection = aimAssistTab:Section({
 
 aimAssistOptionsSection:Toggle({
     name = 'Require Right Click',
-    default = false,
+    default = true,
     flag = 'aim_assist_require_mouse',
 })
 

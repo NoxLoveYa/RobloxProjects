@@ -17,7 +17,7 @@ function AimAssist.new()
         Strength = 10.0,
         FOV = 30,
         TargetPart = 'Head',
-        RequireMouseDown = false,
+        RequireMouseDown = true,
         TeamCheck = false,
         VisibleCheck = false,
         TriggerbotEnabled = true,
