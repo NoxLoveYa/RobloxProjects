@@ -6,6 +6,7 @@ AimAssist.__index = AimAssist
 local RunService = game:GetService('RunService')
 local Players = game:GetService('Players')
 local UserInputService = game:GetService('UserInputService')
+local visiblePlayers = {}
 
 function AimAssist.new()
     local self = setmetatable({}, AimAssist)
@@ -13,7 +14,7 @@ function AimAssist.new()
     -- Default settings
     self.Settings = {
         Enabled = false,
-        Strength = 3.0,
+        Strength = 10.0,
         FOV = 30,
         TargetPart = 'Head',
         RequireMouseDown = false,
@@ -58,20 +59,8 @@ function AimAssist:GetBestTarget()
         end
 
         -- Visibility check
-        if self.Settings.VisibleCheck then
-            local params = RaycastParams.new()
-            params.FilterDescendantsInstances =
-                { self.LocalPlayer.Character }
-            params.FilterType = Enum.RaycastFilterType.Exclude
-            local result = workspace:Raycast(
-                cameraPos,
-                (targetPart.Position - cameraPos).Unit * 10000,
-                params
-            )
-            print(result)
-            if result then
-                continue
-            end
+        if self.Settings.VisibleCheck and not visiblePlayers[player] then
+            continue
         end
 
         -- Calculate angle to target
@@ -142,6 +131,7 @@ function AimAssist:Start()
             self.AimAssistActive = false
         end
     end)
+    self.VisibleConnection = RunSe
 end
 
 function AimAssist:Stop()
