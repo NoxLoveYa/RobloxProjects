@@ -20,7 +20,7 @@ function AimAssist.new()
         RequireMouseDown = false,
         TeamCheck = false,
         VisibleCheck = false,
-        TriggerbotEnabled = false,
+        TriggerbotEnabled = true,
     }
 
     -- Internal state

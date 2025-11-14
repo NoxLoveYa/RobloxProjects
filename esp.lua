@@ -288,6 +288,16 @@ generalSection:Toggle({
     flag = 'esp_enabled',
 })
 
+generalSection:Toggle({
+    name = 'Triggerbot (Experimental)',
+    default = true,
+    flag = 'general_triggerbot',
+})
+
+generalSection:Label({
+    name = 'Toggle Menu: Right Alt',
+})
+
 -- ESP Tab
 local espTab = window:Tab('ESP')
 
@@ -438,6 +448,7 @@ RunService.RenderStepped:Connect(function()
     MyAimAssist.Settings.TeamCheck = GUI.flags.aim_assist_team_check or false
     MyAimAssist.Settings.VisibleCheck = GUI.flags.aim_assist_visible_check
         or false
+    MyAimAssist.Settings.TriggerbotEnabled = GUI.flags.general_triggerbot or true
 
     -- Update aim assist status display
     if MyAimAssist.Settings.Enabled then
