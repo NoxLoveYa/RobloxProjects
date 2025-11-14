@@ -18,7 +18,6 @@ function AimAssist.new()
         FOV = 30,
         TargetPart = 'Head',
         RequireMouseDown = false,
-        Smoothing = 0.0,
         TeamCheck = false,
         VisibleCheck = false,
     }

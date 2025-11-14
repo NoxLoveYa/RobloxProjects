@@ -368,16 +368,6 @@ aimAssistSection:Slider({
 })
 
 aimAssistSection:Slider({
-    name = 'Smoothing',
-    min = 0,
-    max = 10.0,
-    float = 0.1,
-    default = 0,
-    text = '[value]',
-    flag = 'aim_assist_smoothing',
-})
-
-aimAssistSection:Slider({
     name = 'FOV',
     min = 5,
     max = 90,
@@ -441,7 +431,6 @@ RunService.RenderStepped:Connect(function()
     -- Update aim assist settings from GUI flags
     MyAimAssist.Settings.Enabled = GUI.flags.aim_assist_enabled or true
     MyAimAssist.Settings.Strength = GUI.flags.aim_assist_strength or 10.0
-    MyAimAssist.Settings.Smoothing = GUI.flags.aim_assist_smoothing or 0.0
     MyAimAssist.Settings.FOV = GUI.flags.aim_assist_fov or 30
     MyAimAssist.Settings.TargetPart = GUI.flags.aim_assist_target_part or 'Head'
     MyAimAssist.Settings.RequireMouseDown = GUI.flags.aim_assist_require_mouse
