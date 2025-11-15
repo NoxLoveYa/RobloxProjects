@@ -288,11 +288,11 @@ generalSection:Toggle({
     flag = 'esp_enabled',
 })
 
-generalSection:Toggle({
-    name = 'Triggerbot (Experimental)',
-    default = true,
-    flag = 'general_triggerbot',
-})
+-- generalSection:Toggle({
+--     name = 'Triggerbot (Experimental)',
+--     default = true,
+--     flag = 'general_triggerbot',
+-- })
 
 -- ESP Tab
 local espTab = window:Tab('ESP')
