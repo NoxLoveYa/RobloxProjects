@@ -444,7 +444,7 @@ RunService.RenderStepped:Connect(function()
     MyAimAssist.Settings.TeamCheck = GUI.flags.aim_assist_team_check or false
     MyAimAssist.Settings.VisibleCheck = GUI.flags.aim_assist_visible_check
         or false
-    MyAimAssist.Settings.TriggerbotEnabled = GUI.flags.general_triggerbot or true
+    --MyAimAssist.Settings.TriggerbotEnabled = GUI.flags.general_triggerbot or true
 
     -- Update aim assist status display
     if MyAimAssist.Settings.Enabled then

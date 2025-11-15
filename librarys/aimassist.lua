@@ -130,29 +130,29 @@ function AimAssist:Start()
         else
             self.AimAssistActive = false
         end
-        if self.Settings.TriggerbotEnabled then
-            local rayOrigin = self.Camera.CFrame.Position
-            local rayDirection = (self.Camera.CFrame.LookVector).Unit * 1000
-            local raycastParams = RaycastParams.new()
+        -- if self.Settings.TriggerbotEnabled then
+        --     local rayOrigin = self.Camera.CFrame.Position
+        --     local rayDirection = (self.Camera.CFrame.LookVector).Unit * 1000
+        --     local raycastParams = RaycastParams.new()
             
-            -- Exclude only our own character (so we hit everything else)
-            raycastParams.FilterDescendantsInstances = {self.LocalPlayer.Character}
-            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist  -- This is actually correct!
+        --     -- Exclude only our own character (so we hit everything else)
+        --     raycastParams.FilterDescendantsInstances = {self.LocalPlayer.Character}
+        --     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist  -- This is actually correct!
 
-            local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+        --     local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
 
-            if raycastResult then
-                local hitInstance = raycastResult.Instance
-                -- Check if we hit a player (not a wall)
-                local character = hitInstance:FindFirstAncestorOfClass("Model")
-                if character and character:FindFirstChild("Humanoid") then
-                    local player = Players:GetPlayerFromCharacter(character)
-                    if player and player ~= self.LocalPlayer then
-                        mouse1click()
-                    end
-                end
-            end
-        end
+        --     if raycastResult then
+        --         local hitInstance = raycastResult.Instance
+        --         -- Check if we hit a player (not a wall)
+        --         local character = hitInstance:FindFirstAncestorOfClass("Model")
+        --         if character and character:FindFirstChild("Humanoid") then
+        --             local player = Players:GetPlayerFromCharacter(character)
+        --             if player and player ~= self.LocalPlayer then
+        --                 mouse1click()
+        --             end
+        --         end
+        --     end
+        -- end
     end)
     self.VisibleConnection = RunService.RenderStepped:Connect(function()
         visiblePlayers = {}
