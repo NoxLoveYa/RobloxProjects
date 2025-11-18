@@ -1,5 +1,8 @@
 {
     "robloxLsp.diagnostics.globals": [
-        "Drawing"
+        "Drawing",
+        "mouse1click",
+        "mouse1press",
+        "mouse1release"
     ]
 }
