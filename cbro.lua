@@ -24,6 +24,11 @@ _G.KittyWare.ESP_COLORS = {}
 _G.KittyWare.MODULATION_COLORS = {}
 _G.KittyWare.CACHE = {}
 
+-- Initialize modulation state (before toggles create callbacks)
+_G.KittyWare.AMBIENT_ENABLED = true
+_G.KittyWare.BRIGHTNESS = 0.0
+_G.KittyWare.MODULATION_COLORS["AMBIENT"] = Color3.fromRGB(89, 36, 212)
+
 WindUI:AddTheme({
     Name = "KittyWare",
     
@@ -222,8 +227,17 @@ local WorldAmbientEnabledToggle = ModulationTab:Toggle({
     Value = true, -- default value
     Callback = function(state) 
         _G.KittyWare.AMBIENT_ENABLED = state
-        if not state and _G.KittyWare.CACHE["AMBIENT"] then
-            Lighting.Ambient = _G.KittyWare.CACHE["AMBIENT"]
+        if state then
+            -- Enabling: capture current ambient as original (if not already cached)
+            if not _G.KittyWare.CACHE["AMBIENT_ORIGINAL"] then
+                _G.KittyWare.CACHE["AMBIENT_ORIGINAL"] = Lighting.Ambient
+            end
+        else
+            -- Disabling: restore original if cached
+            if _G.KittyWare.CACHE["AMBIENT_ORIGINAL"] then
+                Lighting.Ambient = _G.KittyWare.CACHE["AMBIENT_ORIGINAL"]
+                _G.KittyWare.CACHE["AMBIENT_ORIGINAL"] = nil
+            end
         end
     end
 })
@@ -237,9 +251,18 @@ local WorldBrightnessSlider = ModulationTab:Slider({
         Default = 0.0,
     },
     Callback = function(value)
-        _G.KittyWare.BRIGHTNESS = value
-        if value == 0.0 and _G.KittyWare.CACHE["BRIGHTNESS"] then
-            Lighting.Brightness = _G.KittyWare.CACHE["BRIGHTNESS"]
+        _G.KittyWare.BRIGHTNESS = tonumber(value) or 0.0
+        if _G.KittyWare.BRIGHTNESS ~= 0.0 then
+            -- Enabling brightness modulation: capture current brightness as original (if not already cached)
+            if not _G.KittyWare.CACHE["BRIGHTNESS_ORIGINAL"] then
+                _G.KittyWare.CACHE["BRIGHTNESS_ORIGINAL"] = Lighting.Brightness
+            end
+        else
+            -- Disabling brightness modulation (slider at 0): restore original if cached
+            if _G.KittyWare.CACHE["BRIGHTNESS_ORIGINAL"] then
+                Lighting.Brightness = _G.KittyWare.CACHE["BRIGHTNESS_ORIGINAL"]
+                _G.KittyWare.CACHE["BRIGHTNESS_ORIGINAL"] = nil
+            end
         end
     end
 })
@@ -252,10 +275,13 @@ local WorldAmbientColor = ModulationTab:Colorpicker({
     Transparency = 0,
     Locked = false,
     Callback = function(color)
-        if _G.KittyWare.AMBIENT_ENABLED then
-            Lighting.Ambient = color
-        end
         _G.KittyWare.MODULATION_COLORS["AMBIENT"] = color
+        if color ~= nil then
+            -- Color is being set: capture current ambient as original (if not already cached)
+            if not _G.KittyWare.CACHE["AMBIENT_ORIGINAL"] then
+                _G.KittyWare.CACHE["AMBIENT_ORIGINAL"] = Lighting.Ambient
+            end
+        end
     end
 })
 
@@ -443,6 +469,12 @@ local function initESP(player: Player)
 end
 table.insert(PlayersInitCache, initESP)
 
+-- AIMBOT
+local function runAimbot()
+    if not _G.KittyWare.AIMBOT_ENABLED then return end
+    -- TODO: Implement aimbot logic here
+end
+
 -- TRIGGERBOT
 local function runTriggerbot()
     if not _G.KittyWare.TRIGGERBOT_ENABLED or not UserInputService:IsKeyDown(_G.KittyWare.TRIGGERBOT_KEY or Enum.KeyCode.LeftAlt) then return end
@@ -489,33 +521,46 @@ local function runBHOP()
     -- end
 end
 
+local lastAmbient = nil
+local lastBrightness = nil
+
 local function runMODULATION()
-    if _G.KittyWare.AMBIENT_ENABLED and _G.KittyWare.MODULATION_COLORS["AMBIENT"] and Lighting.Ambient ~= _G.KittyWare.MODULATION_COLORS["AMBIENT"] then
-        _G.KittyWare.CACHE["AMBIENT"] = Lighting.Ambient
-        Lighting.Ambient =  _G.KittyWare.MODULATION_COLORS["AMBIENT"]
+    -- Detect map changes: when Lighting values change unexpectedly, reset cache
+    if lastAmbient and lastAmbient ~= Lighting.Ambient then
+        -- Map changed, lighting reset by game
+        _G.KittyWare.CACHE["AMBIENT_ORIGINAL"] = nil
+        lastAmbient = Lighting.Ambient
+    end
+    if lastBrightness and lastBrightness ~= Lighting.Brightness then
+        -- Map changed, lighting reset by game
+        _G.KittyWare.CACHE["BRIGHTNESS_ORIGINAL"] = nil
+        lastBrightness = Lighting.Brightness
     end
     
-    if _G.KittyWare.BRIGHTNESS ~= 0 and Lighting.Brightness ~= _G.KittyWare.BRIGHTNESS then
-        _G.KittyWare.CACHE["BRIGHTNESS"] = Lighting.Brightness
-        Lighting.Brightness = _G.KittyWare.BRIGHTNESS
+    -- Apply ambient modulation (only if enabled AND color is set)
+    if _G.KittyWare.AMBIENT_ENABLED and _G.KittyWare.MODULATION_COLORS["AMBIENT"] then
+        if not _G.KittyWare.CACHE["AMBIENT_ORIGINAL"] then
+            _G.KittyWare.CACHE["AMBIENT_ORIGINAL"] = Lighting.Ambient
+        end
+        if Lighting.Ambient ~= _G.KittyWare.MODULATION_COLORS["AMBIENT"] then
+            Lighting.Ambient = _G.KittyWare.MODULATION_COLORS["AMBIENT"]
+        end
     end
+    
+    -- Apply brightness modulation (only if non-zero AND enabled)
+    if _G.KittyWare.BRIGHTNESS and tonumber(_G.KittyWare.BRIGHTNESS) and tonumber(_G.KittyWare.BRIGHTNESS) > 0 then
+        if not _G.KittyWare.CACHE["BRIGHTNESS_ORIGINAL"] then
+            _G.KittyWare.CACHE["BRIGHTNESS_ORIGINAL"] = Lighting.Brightness
+        end
+        if Lighting.Brightness ~= _G.KittyWare.BRIGHTNESS then
+            Lighting.Brightness = _G.KittyWare.BRIGHTNESS
+        end
+    end
+    
+    -- Track current values for next frame
+    lastAmbient = Lighting.Ambient
+    lastBrightness = Lighting.Brightness
 end
-
-UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
-    if gameProcessedEvent then return end
-
-    if input.KeyCode == Enum.KeyCode.Space then
-        bhop_running = true
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input, gameProcessedEvent)
-    if gameProcessedEvent then return end
-
-    if input.KeyCode == Enum.KeyCode.Space then
-        bhop_running = false
-    end
-end)
 
 -- SETUP CHEAT
 InitPlayersCache()
@@ -530,6 +575,7 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 RunService.RenderStepped:Connect(function(deltaTime)
+    runAimbot()
     runTriggerbot()
     runBHOP()
     runMODULATION()
