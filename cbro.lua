@@ -1,5 +1,6 @@
 -- SERVICES
 local DataStoreService = game:GetService("DataStoreService")
+local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace: Workspace = game:GetService("Workspace")
@@ -20,6 +21,8 @@ local version = '0.1'
 _G.KittyWare = {}
 _G.KittyWare.ESP_ELEMENTS = {}
 _G.KittyWare.ESP_COLORS = {}
+_G.KittyWare.MODULATION_COLORS = {}
+_G.KittyWare.CACHE = {}
 
 WindUI:AddTheme({
     Name = "KittyWare",
@@ -56,6 +59,12 @@ Window:EditOpenButton({
     Enabled = true,
 })
 
+local LegitbotTab = Window:Tab({
+    Title = "Legitbot",
+    Icon = "geist:target",
+    Locked = false,
+})
+
 local EspTab = Window:Tab({
     Title = "Visuals",
     Icon = "geist:eye",
@@ -68,6 +77,12 @@ local ModulationTab = Window:Tab({
     Locked = false,
 })
 
+local MovementTab = Window:Tab({
+    Title = "Movement",
+    Icon = "geist:star",
+    Locked = false,
+})
+
 Window:Divider()
 
 local SettingsTab = Window:Tab({
@@ -76,6 +91,45 @@ local SettingsTab = Window:Tab({
 })
 
 SettingsTab:Select()
+
+local LegitbotAimbotEnabledToggle = LegitbotTab:Toggle({
+    Title = "Aimbot",
+    Type = "Checkbox",
+    Value = true, -- default value
+    Callback = function(state) 
+        _G.KittyWare.AIMBOT_ENABLED = state
+    end
+})
+
+local Slider = LegitbotTab:Slider({
+    Title = "Aimbot Fov",
+    Step = 0.1,
+    Value = {
+        Min = 0.1,
+        Max = 25.0,
+        Default = 1.5,
+    },
+    Callback = function(value)
+        _G.KittyWare.AIMBOT_FOV = value
+    end
+})
+
+local LegitbotTriggerbotEnabledToggle = LegitbotTab:Toggle({
+    Title = "Triggerbot",
+    Type = "Checkbox",
+    Value = true, -- default value
+    Callback = function(state) 
+        _G.KittyWare.TRIGGERBOT_ENABLED = state
+    end
+})
+
+local LegitbotTriggerbotKeybind = LegitbotTab:Keybind({
+    Title = "Triggerbot key",
+    Value = "LeftAlt",
+    Callback = function(key)
+       _G.KittyWare.TRIGGERBOT_KEY = key
+    end
+})
 
 local EspEnabledToggle = EspTab:Toggle({
     Title = "Enabled",
@@ -101,12 +155,6 @@ local EspElementsDropdown = EspTab:Dropdown({
 })
 
 EspTab:Divider()
-
-EspTab:Paragraph({
-    Title = "Colors",
-    Color = "White",
-    Locked = true,
-})
 
 local EspBoxColor = EspTab:Colorpicker({
     Title = "Box Color",
@@ -168,6 +216,58 @@ local EspOutlineColor = EspTab:Colorpicker({
     end
 })
 
+local WorldAmbientEnabledToggle = ModulationTab:Toggle({
+    Title = "Ambient",
+    Type = "Checkbox",
+    Value = true, -- default value
+    Callback = function(state) 
+        _G.KittyWare.AMBIENT_ENABLED = state
+        if not state and _G.KittyWare.CACHE["AMBIENT"] then
+            Lighting.Ambient = _G.KittyWare.CACHE["AMBIENT"]
+        end
+    end
+})
+
+local WorldBrightnessSlider = ModulationTab:Slider({
+    Title = "World Brightness",
+    Step = 0.1,
+    Value = {
+        Min = 0.0,
+        Max = 4.0,
+        Default = 0.0,
+    },
+    Callback = function(value)
+        _G.KittyWare.BRIGHTNESS = value
+        if value == 0.0 and _G.KittyWare.CACHE["BRIGHTNESS"] then
+            Lighting.Brightness = _G.KittyWare.CACHE["BRIGHTNESS"]
+        end
+    end
+})
+
+ModulationTab:Divider()
+
+local WorldAmbientColor = ModulationTab:Colorpicker({
+    Title = "Ambient Color",
+    Default = Color3.fromRGB(89, 36, 212),
+    Transparency = 0,
+    Locked = false,
+    Callback = function(color)
+        if _G.KittyWare.AMBIENT_ENABLED then
+            Lighting.Ambient = color
+        end
+        _G.KittyWare.MODULATION_COLORS["AMBIENT"] = color
+    end
+})
+
+local MovementBhopEnabledToggle = MovementTab:Toggle({
+    Title = "Bunny Hop",
+    Type = "Checkbox",
+    Value = true, -- default value
+    Callback = function(state) 
+        _G.KittyWare.BHOP_ENABLED = state
+    end
+})
+
 -- PLAYER CACHE
 local function ClearPlayerCache(player: Player)
     local userId = player.UserId
@@ -212,7 +312,6 @@ local function InitPlayersCache()
         end)
     end
 end
-
 
 -- ESP
 local function initESP(player: Player)
@@ -298,6 +397,7 @@ local function initESP(player: Player)
             boxQuad.PointC = Vector2.new(FeetPos.X + width / 2, FeetPos.Y)
             boxQuad.PointD = Vector2.new(FeetPos.X - width / 2, FeetPos.Y)
             boxQuad.Color = colors["Box"] or Color3.fromRGB(0, 140, 255)
+            boxQuad.Transparency = true
             boxQuad.Visible = true
         end
         
@@ -344,9 +444,8 @@ end
 table.insert(PlayersInitCache, initESP)
 
 -- TRIGGERBOT
-local triggerbot_running = false
 local function runTriggerbot()
-    if not triggerbot_running then return end
+    if not _G.KittyWare.TRIGGERBOT_ENABLED or not UserInputService:IsKeyDown(_G.KittyWare.TRIGGERBOT_KEY or Enum.KeyCode.LeftAlt) then return end
 
     local Character = LocalPlayer.Character
     if not Character then return end
@@ -367,43 +466,38 @@ local function runTriggerbot()
 
     if Players:GetPlayerFromCharacter(character).Team == LocalPlayer.Team then return end
 
-    mouse1press() task.wait(1 / 24) mouse1release()
+    mouse1press() task.wait(1 / 240) mouse1release()
 end
 
-UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
-    if gameProcessedEvent then return end
-
-    if input.KeyCode == Enum.KeyCode.LeftAlt then
-        triggerbot_running = true
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input, gameProcessedEvent)
-    if gameProcessedEvent then return end
-
-    if input.KeyCode == Enum.KeyCode.LeftAlt then
-        triggerbot_running = false
-    end
-end)
-
 -- BHOP
-local bhop_running
 local function runBHOP()
-    if LocalPlayer.Character ~= nil and UserInputService:IsKeyDown(Enum.KeyCode.Space) and LocalPlayer.PlayerGui.GUI.Main.GlobalChat.Visible == false then
-        LocalPlayer.Character.Humanoid.Jump = true
-        local bhopSpeed = 1000
-        local moveDirection = camera.CFrame.LookVector * Vector3.new(1, 0, 1)
-        local movement = Vector3.new()
-        
-        movement = (UserInputService:IsKeyDown(Enum.KeyCode.W) and (movement + moveDirection)) or movement
-        movement = (UserInputService:IsKeyDown(Enum.KeyCode.S) and (movement - moveDirection)) or movement
-        movement = (UserInputService:IsKeyDown(Enum.KeyCode.D) and (movement + Vector3.new(-moveDirection.Z, 0, moveDirection.X))) or movement
-        movement = (UserInputService:IsKeyDown(Enum.KeyCode.A) and (movement + Vector3.new(moveDirection.Z, 0, -moveDirection.X))) or movement
-        
-        if movement.Unit.X == movement.Unit.X then
-            movement = movement.Unit
-            LocalPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(movement.X * bhopSpeed, LocalPlayer.Character.HumanoidRootPart.Velocity.Y, movement.Z * bhopSpeed)
-        end
+    if not _G.KittyWare.BHOP_ENABLED or LocalPlayer.Character == nil or not UserInputService:IsKeyDown(Enum.KeyCode.Space) or LocalPlayer.PlayerGui.GUI.Main.GlobalChat.Visible == true then return end
+    
+    LocalPlayer.Character.Humanoid.Jump = true
+    -- local bhopSpeed = 1000
+    -- local moveDirection = Workspace.CurrentCamera.CFrame.LookVector * Vector3.new(1, 0, 1)
+    -- local movement = Vector3.new()
+    
+    -- movement = (UserInputService:IsKeyDown(Enum.KeyCode.W) and (movement + moveDirection)) or movement
+    -- movement = (UserInputService:IsKeyDown(Enum.KeyCode.S) and (movement - moveDirection)) or movement
+    -- movement = (UserInputService:IsKeyDown(Enum.KeyCode.D) and (movement + Vector3.new(-moveDirection.Z, 0, moveDirection.X))) or movement
+    -- movement = (UserInputService:IsKeyDown(Enum.KeyCode.A) and (movement + Vector3.new(moveDirection.Z, 0, -moveDirection.X))) or movement
+    
+    -- if movement.Unit.X == movement.Unit.X then
+    --     movement = movement.Unit
+    --     LocalPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(movement.X * bhopSpeed, LocalPlayer.Character.HumanoidRootPart.Velocity.Y, movement.Z * bhopSpeed)
+    -- end
+end
+
+local function runMODULATION()
+    if _G.KittyWare.AMBIENT_ENABLED and _G.KittyWare.MODULATION_COLORS["AMBIENT"] and Lighting.Ambient ~= _G.KittyWare.MODULATION_COLORS["AMBIENT"] then
+        _G.KittyWare.CACHE["AMBIENT"] = Lighting.Ambient
+        Lighting.Ambient =  _G.KittyWare.MODULATION_COLORS["AMBIENT"]
+    end
+    
+    if _G.KittyWare.BRIGHTNESS ~= 0 and Lighting.Brightness ~= _G.KittyWare.BRIGHTNESS then
+        _G.KittyWare.CACHE["BRIGHTNESS"] = Lighting.Brightness
+        Lighting.Brightness = _G.KittyWare.BRIGHTNESS
     end
 end
 
@@ -438,4 +532,5 @@ end)
 RunService.RenderStepped:Connect(function(deltaTime)
     runTriggerbot()
     runBHOP()
+    runMODULATION()
 end)
