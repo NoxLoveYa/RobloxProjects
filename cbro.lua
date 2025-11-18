@@ -12,65 +12,161 @@ local PlayersCache = {} -- any cache item must have a Remove method.
 local PlayersInitCache = {} -- store lambdas to init each esp element or other needed shit in the 
 
 -- SETTINGS
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 local FONT = Drawing.Fonts.UI
 local version = '0.1'
 
 -- SETUP MENU
 _G.KittyWare = {}
 _G.KittyWare.ESP_ELEMENTS = {}
-local Window = Rayfield:CreateWindow({
+_G.KittyWare.ESP_COLORS = {}
+
+WindUI:AddTheme({
     Name = "KittyWare",
-    LoadingTitle = 'Meoooow',
-    LoadingSubtitle = 'By Noxy_Kun',
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = 'KittyWare',
-        FileName = 'Counterblox'
-    },
-    Discord = {
-        Enabled = false,
-        Invite = 'noinvitelink',
-        RememberJoins = true,
-    },
-    KeySystem = false,
-    KeySettings = {
-        Title = 'Key System',
-        Subtitle = 'Discord System',
-        Note = 'discord.gg/vZQTkyCXD8',
-        FileName = 'Key',
-        SaveKey = true,
-        GrabKeyFromSite = false,
-        Key = { 'idfk' },
-    },
+    
+    Accent = Color3.fromHex("#be185d"),
+    Dialog = Color3.fromHex("#4c0519"),
+    Outline = Color3.fromHex("#fecdd3"),
+    Text = Color3.fromHex("#fdf2f8"),
+    Placeholder = Color3.fromHex("#d67aa6"),
+    Background = Color3.fromHex("#101010"),
+    Button = Color3.fromHex("#e11d48"),
+    Icon = Color3.fromHex("#fb7185"),
 })
 
-local EspTab = Window:CreateTab('ESP', nil)
-
-EspTab:CreateToggle({
-    Name = "Enabled",
-   CurrentValue = true,
-   Flag = "ESP_TOGGLE",
-   Callback = function(value)
-    _G.KittyWare.ESP_ENABLED = value
-   end,
+local Window = WindUI:CreateWindow({
+    Title = "KittyWare CB:RO",
+    Icon = "door-open", -- lucide icon
+    Author = "by Nox",
+    Folder = "KittywWare",
+    
+    -- ↓ This all is Optional. You can remove it.
+    Size = UDim2.fromOffset(680, 560),
+    Transparent = true,
+    Theme = "KittyWare",
+    Resizable = true,
+    BackgroundImageTransparency = 0.42,
+    ToggleKey = Enum.KeyCode.Right
 })
 
-EspTab:CreateDropdown({
-   Name = "ESP Elements",
-   Options = {"Box", "Head Circle", "Name", "Gun", "Health Bar", "Outline"},
-   CurrentOption = {"Name", "Head Circle", "Gun", "Health Bar", "Outline"},
-   MultipleOptions = true,
-   Flag = "ESP_ELEMENTS",
-   Callback = function(Options)
+Window:EditOpenButton({
+    Title = "Open KittyWare CB:RO",
+    Icon = "monitor",
+    OnlyMobile = true,
+    Enabled = true,
+})
+
+local EspTab = Window:Tab({
+    Title = "Visuals",
+    Icon = "geist:eye",
+    Locked = false,
+})
+
+local ModulationTab = Window:Tab({
+    Title = "World",
+    Icon = "geist:droplet",
+    Locked = false,
+})
+
+Window:Divider()
+
+local SettingsTab = Window:Tab({
+    Title = "Settings",
+    Icon = "geist:settings-gear",
+})
+
+SettingsTab:Select()
+
+local EspEnabledToggle = EspTab:Toggle({
+    Title = "Enabled",
+    Type = "Checkbox",
+    Value = true, -- default value
+    Callback = function(state) 
+        _G.KittyWare.ESP_ENABLED = state
+    end
+})
+
+local EspElementsDropdown = EspTab:Dropdown({
+    Title = "ESP Elements",
+    Values = { "Box", "Head Circle", "Name", "Gun", "Health Bar", "Outline"},
+    Value = { "Name", "Head Circle", "Gun", "Health Bar", "Outline" },
+    Multi = true,
+    AllowNone = true,
+    Callback = function(options) 
         _G.KittyWare.ESP_ELEMENTS = {}
-        for index, name in pairs(Options) do
+        for index, name in pairs(options) do
             _G.KittyWare.ESP_ELEMENTS[name] = true
         end
-   end,
+    end
 })
 
-Rayfield:LoadConfiguration()
+EspTab:Divider()
+
+EspTab:Paragraph({
+    Title = "Colors",
+    Color = "White",
+    Locked = true,
+})
+
+local EspBoxColor = EspTab:Colorpicker({
+    Title = "Box Color",
+    Default = Color3.fromRGB(0, 140, 255),
+    Transparency = 0,
+    Locked = false,
+    Callback = function(color) 
+        _G.KittyWare.ESP_COLORS["Box"] = color
+    end
+})
+
+local EspHeadCircleColor = EspTab:Colorpicker({
+    Title = "Head Circle Color",
+    Default = Color3.fromRGB(255, 100, 130),
+    Transparency = 0,
+    Locked = false,
+    Callback = function(color)
+        _G.KittyWare.ESP_COLORS["Head Circle"] = color
+    end
+})
+
+local EspNameColor = EspTab:Colorpicker({
+    Title = "Name Color",
+    Default = Color3.fromRGB(255, 255, 255),
+    Transparency = 0,
+    Locked = false,
+    Callback = function(color)
+        _G.KittyWare.ESP_COLORS["Name"] = color
+    end
+})
+
+local EspGunColor = EspTab:Colorpicker({
+    Title = "Gun Color",
+    Default = Color3.fromRGB(255, 230, 128),
+    Transparency = 0,
+    Locked = false,
+    Callback = function(color)
+        _G.KittyWare.ESP_COLORS["Gun"] = color
+    end
+})
+
+local EspHealthBarColor = EspTab:Colorpicker({
+    Title = "Health Bar Color",
+    Default = Color3.fromRGB(196, 255, 56),
+    Transparency = 0,
+    Locked = false,
+    Callback = function(color)
+        _G.KittyWare.ESP_COLORS["Health Bar"] = color
+    end
+})
+
+local EspOutlineColor = EspTab:Colorpicker({
+    Title = "Outline Color",
+    Default = Color3.fromRGB(255, 106, 135),
+    Transparency = 0,
+    Locked = false,
+    Callback = function(color)
+        _G.KittyWare.ESP_COLORS["Outline"] = color
+    end
+})
 
 -- PLAYER CACHE
 local function ClearPlayerCache(player: Player)
@@ -176,7 +272,7 @@ local function initESP(player: Player)
         gunText.Visible = false
         headCircle.Visible = false
 
-        if not Character or not _G.KittyWare.ESP_ENABLED then return end
+        if not Character or not _G.KittyWare.ESP_ENABLED then outline.Parent = nil return end
 
         local Humanoid: Humanoid = Character:FindFirstChild("Humanoid")
         local Head = Character:FindFirstChild("Head")
@@ -194,35 +290,41 @@ local function initESP(player: Player)
         local height = math.abs(HeadBoundsPos.Y - FeetPos.Y)
         local width = height / 1.5 
 
+        local colors = _G.KittyWare.ESP_COLORS or {}
+        
         if _G.KittyWare.ESP_ELEMENTS["Box"] then            
             boxQuad.PointA = Vector2.new(HeadBoundsPos.X - width / 2, HeadBoundsPos.Y)
             boxQuad.PointB = Vector2.new(HeadBoundsPos.X + width / 2, HeadBoundsPos.Y)
             boxQuad.PointC = Vector2.new(FeetPos.X + width / 2, FeetPos.Y)
             boxQuad.PointD = Vector2.new(FeetPos.X - width / 2, FeetPos.Y)
+            boxQuad.Color = colors["Box"] or Color3.fromRGB(0, 140, 255)
             boxQuad.Visible = true
         end
-
+        
         if _G.KittyWare.ESP_ELEMENTS["Head Circle"] then        
             headCircle.Position = Vector2.new(HeadPos.X, HeadPos.Y)
             headCircle.Radius = (HeadPos.Y - HeadBoundsPos.Y) / 2.15
+            headCircle.Color = colors["Head Circle"] or Color3.fromRGB(255, 100, 130)
             headCircle.Visible = true
         end
-
-        print(_G.KittyWare.ESP_ELEMENTS["Name"])
+        
         if _G.KittyWare.ESP_ELEMENTS["Name"] then
             nameText.Position = Vector2.new(HeadBoundsPos.X, HeadBoundsPos.Y) + Vector2.new(-(nameText.TextBounds.X / 2), -(nameText.TextBounds.Y * 1.25))
+            nameText.Color = colors["Name"] or Color3.fromRGB(255, 255, 255)
             nameText.Visible = true
         end
-
+        
         if _G.KittyWare.ESP_ELEMENTS["Gun"] then
             gunText.Text = Character.EquippedTool.Value
             gunText.Position = Vector2.new(FeetPos.X, FeetPos.Y) + Vector2.new(-(gunText.TextBounds.X / 2), 0)
+            gunText.Color = colors["Gun"] or Color3.fromRGB(255, 230, 128)
             gunText.Visible = true
         end
-
+        
         if _G.KittyWare.ESP_ELEMENTS["Health Bar"] then
             healthLine.From = Vector2.new((FeetPos.X - width / 2) - (healthLine.Thickness + 2), FeetPos.Y)
             healthLine.To = Vector2.new((HeadPos.X - width / 2) - (healthLine.Thickness + 2), FeetPos.Y - (height * (Humanoid.Health / Humanoid.MaxHealth)))
+            outline.OutlineColor = colors["Outline"] or Color3.fromRGB(255, 106, 135)
             healthLine.Visible = true
         end
 
@@ -232,7 +334,6 @@ local function initESP(player: Player)
             outline.Parent = nil
         end
     end)
-    
     table.insert(cacheEntry.cache, {
         Remove = function()
             EspConnection:Disconnect()
