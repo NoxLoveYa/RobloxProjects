@@ -77,7 +77,7 @@ local EspTab = Window:Tab({
 })
 
 local ModulationTab = Window:Tab({
-    Title = "World",
+    Title = "Modulation",
     Icon = "geist:droplet",
     Locked = false,
 })
@@ -579,4 +579,19 @@ RunService.RenderStepped:Connect(function(deltaTime)
     runTriggerbot()
     runBHOP()
     runMODULATION()
+    local Arms = Workspace.CurrentCamera:FindFirstChild("Arms")
+    if Arms then
+        local Arms: Model = Arms:FindFirstChildOfClass("Model")
+        if not Arms then return end
+        for _, instance: MeshPart in ipairs(Arms:GetDescendants()) do
+            if instance:IsA("BasePart") then
+                instance.Material = Enum.Material.ForceField
+                instance.Color = Color3.new(0.313725, 0.235294, 1)
+                instance.Transparency = 0.35
+            end
+            if instance.Name == "Mesh" then
+                instance.VertexColor = Vector3.new(0, 0, 1)
+            end
+        end
+    end
 end)
