@@ -85,12 +85,14 @@ THEMES.Text.Element = {
 local library = {}
 local tabs: {Text} = {}
 local nameToIndexTab = {}
-local elements: {Text} = {}
+local elements: {{Text}} = {}
 local connections = {}
 
 local activeTab: number = 1
 
 local cornerLeftPosition: Vector2 = Vector2.new(SCREENSIZE.X - 450, 15)
+local headerCenterX = 0
+local elementsStartY = 0
 
 -- Functions
 local function applyTheme(text: Text, theme: Text)
@@ -107,8 +109,10 @@ end
 
 local function registerText(text: string, position: Vector2?, options: Text?): Text
     local textObject: Text = Drawing.new("Text")
+    options = options or {}
+
     textObject.Text = text
-    textObject.Visible = options.Text or true
+    textObject.Visible = options.Visible or true
     textObject.ZIndex = options.Zindex or 1
     textObject.Transparency = options.Transparency or 1
     textObject.Color = options.Color or Color3.new(1, 1, 1)
@@ -122,6 +126,69 @@ local function registerText(text: string, position: Vector2?, options: Text?): T
     return textObject
 end
 
+local function renderElements()
+    local elementColumns = 2
+    local elementSpacingX = 28
+    local elementSpacingY = 8
+
+    for tabIndex, tabElements in pairs(elements) do
+        local isActiveTab = tabIndex == activeTab
+
+        for _, element in ipairs(tabElements) do
+            element.Visible = isActiveTab
+        end
+
+        if isActiveTab then
+            local leftColumnWidth = 0
+            local rightColumnWidth = 0
+
+            for elementIndex, element in ipairs(tabElements) do
+                if elementIndex % elementColumns == 1 then
+                    leftColumnWidth = math.max(leftColumnWidth, element.TextBounds.X)
+                else
+                    rightColumnWidth = math.max(rightColumnWidth, element.TextBounds.X)
+                end
+            end
+
+            local blockWidth = leftColumnWidth
+            if rightColumnWidth > 0 then
+                blockWidth += elementSpacingX + rightColumnWidth
+            end
+
+            local blockStartX = headerCenterX - (blockWidth / 2)
+            local rowIndex = 0
+            local elementIndex = 1
+
+            while elementIndex <= #tabElements do
+                local rowHeight = 0
+                local leftElement = tabElements[elementIndex]
+                local rightElement = tabElements[elementIndex + 1]
+
+                if leftElement then
+                    rowHeight = math.max(rowHeight, leftElement.TextBounds.Y)
+                end
+
+                if rightElement then
+                    rowHeight = math.max(rowHeight, rightElement.TextBounds.Y)
+                end
+
+                local currentY = elementsStartY + (rowIndex * (rowHeight + elementSpacingY))
+
+                if leftElement then
+                    leftElement.Position = Vector2.new(blockStartX, currentY)
+                end
+
+                if rightElement then
+                    rightElement.Position = Vector2.new(blockStartX + leftColumnWidth + elementSpacingX, currentY)
+                end
+
+                elementIndex += elementColumns
+                rowIndex += 1
+            end
+        end
+    end
+end
+
 local function updateSelectedTab(newTab: number)
     print("Updating selected tab to:", newTab)
     if newTab == activeTab then return end
@@ -130,6 +197,7 @@ local function updateSelectedTab(newTab: number)
     applyTheme(tabs[activeTab], THEMES.Text.TabHeader)
     activeTab = newTab
     applyTheme(tabs[activeTab], THEMES.Text.ActiveTab)
+    renderElements()
 
     print("Selected tab updated to:", activeTab)
 end
@@ -178,7 +246,7 @@ local function initUI(tabDefinitions: {Tab})
 
     local totalSpacingWidth = tabSpacing * math.max(#tabs - 1, 0)
     local totalRowWidth = totalTabsWidth + totalSpacingWidth
-    local headerCenterX = headerText.Position.X
+    headerCenterX = headerText.Position.X
     if not headerText.Center then
         headerCenterX += headerText.TextBounds.X / 2
     end
@@ -187,17 +255,23 @@ local function initUI(tabDefinitions: {Tab})
     local headerRightX = headerCenterX + (headerText.TextBounds.X / 2)
     local sideInset = ((headerRightX - headerLeftX) - totalRowWidth) / 2
     local rowStartX = headerLeftX + sideInset
-    local rowY = cornerLeftPosition.Y + headerText.TextBounds.Y
+    local tabOffsetY = 6
+    local rowY = cornerLeftPosition.Y + headerText.TextBounds.Y + tabOffsetY
+    local maxTabHeight = 0
 
     local currentX = rowStartX
     for i, tab in ipairs(tabs) do
         tab.Position = Vector2.new(currentX, rowY)
+        maxTabHeight = math.max(maxTabHeight, tab.TextBounds.Y)
         currentX += tab.TextBounds.X
 
         if i < #tabs then
             currentX += tabSpacing
         end
     end
+
+    elementsStartY = rowY + maxTabHeight + 14
+    renderElements()
 end
 
 -- Library
