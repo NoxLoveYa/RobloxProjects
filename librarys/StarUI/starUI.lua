@@ -26,6 +26,24 @@ export type Text = {
     Destroy: () -> ()?,
 }
 
+export type Tab = {
+    Text: string,
+    Elements: {string},
+}
+
+export type Theme = {
+    Text: {
+        Header: Text,
+        TabHeader: Text,
+        ActiveTab: Text,
+        Element: Text,
+    }
+}
+
+export type Library = {
+    initUI: () -> (),
+}
+
 -- Constants
 local VERSION = "0.0.1"
 local SCREENSIZE: Vector2 = Camera.ViewportSize
@@ -56,9 +74,18 @@ THEMES.Text.ActiveTab = {
     Font = 1
 }
 
+THEMES.Text.Element = {
+    Visible = true,
+    Outline = true,
+    Color = Color3.new(1, 1, 1),
+    Font = 0
+}
+
 -- Variables
 local library = {}
 local tabs: {Text} = {}
+local nameToIndexTab = {}
+local elements: {Text} = {}
 local connections = {}
 
 local activeTab: number = 1
@@ -107,14 +134,39 @@ local function updateSelectedTab(newTab: number)
     print("Selected tab updated to:", activeTab)
 end
 
-local function initUI()
+local function registerTab(name: string)
+    local newTab = registerText(name, Vector2.new(0, 0), THEMES.Text.TabHeader)
+    table.insert(tabs, newTab)
+    nameToIndexTab[name] = #tabs
+    return newTab
+end
+
+local registerElement = function(element: string, tab: string)
+    local tabIndex = nameToIndexTab[tab]
+    if not tabIndex then
+        warn("Tab '"..tab.."' does not exist. Element not registered.")
+        return
+    end
+    if not elements[tabIndex] then
+        elements[tabIndex] = {}
+    end
+
+    local newElement = registerText(element, Vector2.new(0, 0), THEMES.Text.Element)
+
+    table.insert(elements[tabIndex], newElement)
+end
+
+local function initUI(tabDefinitions: {Tab})
     -- HEADER
     local headerText: Text = registerText("Kittyware V:"..VERSION, cornerLeftPosition, THEMES.Text.Header)
 
     -- TABS
-    table.insert(tabs, registerText("Visuals", cornerLeftPosition + Vector2.new(0, headerText.TextBounds.Y), THEMES.Text.TabHeader))
-    table.insert(tabs, registerText("Misc", cornerLeftPosition + Vector2.new(0, headerText.TextBounds.Y), THEMES.Text.TabHeader))
-
+    for _, tabInfo in pairs(tabDefinitions) do
+        registerTab(tabInfo.Text)
+        for _, element in pairs(tabInfo.Elements) do
+            registerElement(element, tabInfo.Text)
+        end
+    end
 
     applyTheme(tabs[activeTab], THEMES.Text.ActiveTab)
 
@@ -150,9 +202,10 @@ end
 
 -- Library
 library.initUI = initUI
+library.THEMES = THEMES
 
 connections["InputBegan"] = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.Delete then
+    if (not gameProcessed) and input.KeyCode == Enum.KeyCode.Delete then
         cleardrawcache()
     elseif input.KeyCode == Enum.KeyCode.Left then
         updateSelectedTab(activeTab - 1)
@@ -162,4 +215,17 @@ connections["InputBegan"] = UserInputService.InputBegan:Connect(function(input, 
 end)
 
 -- Example Usage
-initUI()
+initUI({
+    {
+        Text = "Combat",
+        Elements = {"Aimbot", "Triggerbot"}
+    },
+    {
+        Text = "Visuals",
+        Elements = {"Chams", "Esp"}
+    },
+    {
+        Text = "Movement",
+        Elements = {"Noclip", "Fly", "Speed"}
+    }
+})
