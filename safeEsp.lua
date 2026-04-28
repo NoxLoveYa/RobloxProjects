@@ -25,49 +25,103 @@ local function getCharacter(player: Player)
     return cloneref(character)
 end
 
+local function hideEsp(player: Player)
+    cache[player].NameEsp.Visible = false
+    cache[player].NameEsp.Text = player.Name
+
+    cache[player].HeadCircle.Visible = false
+end
+
+local function destroyEsp(player: Player)
+    cache[player].NameEsp:Remove()
+    cache[player].NameEsp = nil
+
+    cache[player].HeadCircle:Remove()
+    cache[player].HeadCircle = nil
+
+    cache[player] = nil
+end
+
+local function createNameEsp(player: Player, character: Model)
+    cache[player].NameEsp = Drawing.new("Text")
+    cache[player].NameEsp.Font = 2
+    cache[player].NameEsp.Size = 14
+    cache[player].NameEsp.Color = Color3.new(0.858823, 1, 0.858823)
+    cache[player].NameEsp.Outline = true
+    cache[player].NameEsp.OutlineColor = Color3.new(0, 0, 0)
+    cache[player].NameEsp.Center = true
+    cache[player].NameEsp.Visible = true
+    cache[player].NameEsp.Text = player.Name
+end
+
+local function updateNameEsp(player: Player, character: Model, screenPos: Vector3)
+    cache[player].NameEsp.Position = Vector2.new(screenPos.X, screenPos.Y - 20)
+    cache[player].NameEsp.Visible = true
+    local humanoid: Humanoid = character:FindFirstChildOfClass("Humanoid")
+    cache[player].NameEsp.Text = player.Name .. " [" .. math.floor(humanoid.Health) .. "]"
+end
+
+local function createHeadEsp(player: Player, character: Model)
+    cache[player].HeadCircle = Drawing.new("Circle")
+    cache[player].HeadCircle.Radius = 4
+    cache[player].HeadCircle.Filled = true
+    cache[player].HeadCircle.Color = Color3.new(1, 0.156862, 0.564705)
+    cache[player].HeadCircle.Transparency = 0.5
+    cache[player].HeadCircle.Visible = true
+end
+
+local function updateHeadEsp(player: Player, character: Model, screenPos: Vector3)
+    cache[player].HeadCircle.Position = Vector2.new(screenPos.X, screenPos.Y)
+    cache[player].HeadCircle.Visible = true
+end
+
+local function createEsp(player: Player, character)
+    local head = character.Head
+    local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
+    if not onScreen then if cache[player] then hideEsp(player) end return end
+    if not cache[player] then
+        cache[player] = {}
+        createNameEsp(player, character)
+        createHeadEsp(player, character)
+    end
+    updateNameEsp(player, character, screenPos)
+    updateHeadEsp(player, character, screenPos)
+end
+
 local function run()
     local currentCharacter = getCharacter(localPlayer)
     local currentTeam = currentCharacter and currentCharacter.Parent.Name
     for _, player: Player in pairs(players:GetPlayers()) do
         if player == localPlayer then continue end
         local character = getCharacter(player)
-        if not character or character.Parent.Name == currentTeam then
+        if not character or currentTeam == nil or character.Parent.Name == currentTeam then
             if cache[player] then
-                cache[player].Visible = false
-                cache[player].Text = player.Name
+                hideEsp(player)
             end
             continue
         end
         if not character:FindFirstChild("Head") then if cache[player] then cache[player].Visible = false cache[player].Text = player.Name end continue end
-        local head = character.Head
-        local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
-        if not onScreen then if cache[player] then cache[player].Visible = false end continue end
-        if not cache[player] then
-            cache[player] = Drawing.new("Text")
-            cache[player].Font = 2
-            cache[player].Size = 14
-            cache[player].Color = Color3.new(0.858823, 1, 0.858823)
-            cache[player].Outline = true
-            cache[player].OutlineColor = Color3.new(0, 0, 0)
-            cache[player].Center = true
-            cache[player].Visible = true
-            cache[player].Text = player.Name
-        end
-        cache[player].Position = Vector2.new(screenPos.X, screenPos.Y - 20)
-        cache[player].Visible = true
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        cache[player].Text = player.Name .. " [" .. math.floor(humanoid.Health) .. "]"
+        createEsp(player, character)
     end
 end
 
 local con = runService.RenderStepped:Connect(function()
-    run()
+    local success, error = pcall(run)
+
+    if not success then
+        warn("Error in ESP: " .. tostring(error))
+    end
 end)
 
 local playerCon = players.PlayerRemoving:Connect(function(player)
-    if cache[player] then
-        cache[player]:Remove()
-        cache[player] = nil
+    local success, error = pcall(function()
+        if cache[player] then
+            destroyEsp(player)
+        end
+    end)
+
+    if not success then
+        warn("Error removing ESP for player " .. player.Name .. ": " .. tostring(error))
     end
 end)
 
@@ -75,13 +129,19 @@ local keyCon = nil
 keyCon = userInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.RightShift then
-        if con then con:Disconnect() end
-        if playerCon then playerCon:Disconnect() end
-        if keyCon then keyCon:Disconnect() end
-        for _, v in pairs(cache) do
-            v:Remove()
+        local success, error = pcall(function()
+            if con then con:Disconnect() end
+            if playerCon then playerCon:Disconnect() end
+            if keyCon then keyCon:Disconnect() end
+            for _, v in pairs(cache) do
+                v.NameEsp:Remove()
+            end
+            cache = {}
+            watermark:Remove()
+            print("Safe ESP unloaded successfully.")
+        end)
+        if not success then
+            warn("Error unloading Safe ESP: " .. tostring(error))
         end
-        cache = {}
-        watermark:Remove()
     end
 end)
