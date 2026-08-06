@@ -261,20 +261,43 @@ local Config = {
 }
 
 local function SaveConfig()
+	if not writefile then
+		warn("[RadiumHub] Config not saved: writefile not available in this executor")
+		return
+	end
 	local data
-	pcall(function() data = HttpService:JSONEncode(Config) end)
-	if data then
-		pcall(function() writefile(ConfigPath, data) end)
+	local ok, err = pcall(function() data = HttpService:JSONEncode(Config) end)
+	if not ok or not data then
+		warn("[RadiumHub] Config not saved: JSONEncode failed: " .. tostring(err))
+		return
+	end
+	local wok, werr = pcall(function() writefile(ConfigPath, data) end)
+	if not wok then
+		warn("[RadiumHub] Config not saved: writefile failed: " .. tostring(werr))
 	end
 end
 
 local function LoadConfig()
+	if not readfile then
+		warn("[RadiumHub] Config not loaded: readfile not available in this executor")
+		return
+	end
 	local raw
-	pcall(function() raw = readfile(ConfigPath) end)
-	if not raw then return end
+	local ok, err = pcall(function() raw = readfile(ConfigPath) end)
+	if not ok then
+		warn("[RadiumHub] Config not loaded: readfile failed: " .. tostring(err))
+		return
+	end
+	if not raw then
+		warn("[RadiumHub] Config file does not exist yet: " .. ConfigPath)
+		return
+	end
 	local decoded
-	pcall(function() decoded = HttpService:JSONDecode(raw) end)
-	if not decoded then return end
+	local dok, derr = pcall(function() decoded = HttpService:JSONDecode(raw) end)
+	if not dok or not decoded then
+		warn("[RadiumHub] Config not loaded: JSONDecode failed: " .. tostring(derr))
+		return
+	end
 	if decoded.accent   then Config.accent   = decoded.accent   end
 	if decoded.bgTheme  then Config.bgTheme  = decoded.bgTheme  end
 	if decoded.glow ~= nil then Config.glow = decoded.glow     end

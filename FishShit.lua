@@ -73,10 +73,11 @@ local function findGuiPath(from, path, className)
 							.. ' failed: no child named "'
 							.. key
 							.. '" of class '
-						.. className
-						.. " in "
-						.. parent:GetFullName()
-				)
+							.. className
+							.. " in "
+							.. parent:GetFullName()
+					)
+				end
 			end
 			current = match
 		else
