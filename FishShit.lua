@@ -160,10 +160,12 @@ local function findGuiByText(from, text, className)
 end
 
 local function VirtualMousePress(pos)
-	local pos = pos or workspace.CurrentCamera.ViewportSize / 2
-	virtualInput:SendMouseButton(pos, Enum.UserInputType.MouseButton1, true, 1)
-	task.wait(0.1)
-	virtualInput:SendMouseButton(pos, Enum.UserInputType.MouseButton1, false, 1)
+	pcall(function()
+		local pos = pos or workspace.CurrentCamera.ViewportSize / 2
+		virtualInput:SendMouseButton(pos, Enum.UserInputType.MouseButton1, true, 1)
+		task.wait(0.1)
+		virtualInput:SendMouseButton(pos, Enum.UserInputType.MouseButton1, false, 1)
+	end)
 end
 
 local suffixes = {
@@ -248,6 +250,12 @@ local autoFishDelay = 1
 local lastFishTime = 0
 local FISH_PATH = { "6", "1", "53", "1", "1", "2" }
 local function autoFish()
+	local fishTPButton = findGuiByText(playerGui, "Fish!", "TextLabel")
+	if fishTPButton then
+		fishTPButton = fishTPButton.Parent.Parent:FindFirstChildOfClass("TextButton")
+		firesignal(fishTPButton.Activated)
+	end
+
 	local fishGui = findGuiPath(playerGui, FISH_PATH)
 	if not fishGui or not fishGui.Visible then
 		return
@@ -327,11 +335,16 @@ local function autoSell()
 			print("[autoSell] Stored Fishes:", current, "/", max or "?")
 		end
 		if current >= autoSellThreshold then
+			if not rootpart then
+				updatePlayerInfo()
+			end
 			local oldCFrame = rootpart.CFrame
 			rootpart.CFrame = CFrame.new(workspace.Map.Shops.SellShop.WorldPivot.Position)
 			task.delay(0.5, function()
 				local sellButton = findGuiByText(playerGui, "Sell")
-				if not sellButton then return end
+				if not sellButton then
+					return
+				end
 				task.delay(0.15, function()
 					firesignal(sellButton.Parent.parent.parent.Activated)
 					rootpart.CFrame = oldCFrame
@@ -344,6 +357,8 @@ local function autoSell()
 		autoSellLastTime = tick()
 	end)
 end
+
+task.wait(3.5)
 
 updatePlayerInfo()
 
@@ -361,6 +376,20 @@ task.spawn(function()
 		if autoFishEnabled then
 			autoFish()
 			autoCast()
+		end
+		task.wait(0.05)
+	end
+end)
+
+task.spawn(function()
+	while true do
+		local clickableStuffGui = findGuiPath(playerGui, { "6", "1", "53" })
+		if clickableStuffGui then
+			for _, child in ipairs(clickableStuffGui:GetDescendants()) do
+				if child:IsA("TextButton") or child:IsA("ImageButton") and child.Visible then
+					firesignal(child.Activated)
+				end
+			end
 		end
 		task.wait(0.05)
 	end
