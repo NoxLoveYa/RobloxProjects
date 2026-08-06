@@ -1,9 +1,4 @@
 -- cframe for fishing: -796.500916, 106.459023, -778.318237, -0.99981916, -1.00005501e-07, -0.0190182105, -9.99874175e-08, 1, -1.90192639e-09, 0.0190182105, -6.73570341e-16, -0.99981916
-local Hub = loadstring(
-	game:HttpGet("https://raw.githubusercontent.com/NoxLoveYa/RobloxProjects/refs/heads/main/Gui%20roblox.lua")
-)()
-
-local DEBUG = false
 
 -- Includes
 local Players: Players = game:GetService("Players")
@@ -11,6 +6,12 @@ local UserInputService = game:GetService("UserInputService")
 local localplayer: Player = game.Players.LocalPlayer
 local playerGui: PlayerGui = localplayer:WaitForChild("PlayerGui", 5)
 local virtualInput: VirtualInput = UserInputService:CreateVirtualInput()
+
+local Hub = loadstring(
+	game:HttpGet("https://raw.githubusercontent.com/NoxLoveYa/RobloxProjects/refs/heads/main/Gui%20roblox.lua")
+)()
+
+local DEBUG = false
 
 -- Var
 local humanoid: Humanoid = nil
@@ -118,12 +119,31 @@ local function findGuiPath(from, path, className)
 	return current
 end
 
+-- Names of hub UI elements to skip when scanning the game's GUI
+local HUB_NAMES = { "RadiumHub" }
+
+local function isHubGui(obj)
+	local current = obj
+	while current do
+		for _, name in ipairs(HUB_NAMES) do
+			if current.Name == name then
+				return true
+			end
+		end
+		current = current.Parent
+	end
+	return false
+end
+
 -- Find a GuiObject (TextLabel/TextButton/TextBox) by its displayed text
 -- Partial (substring) match by default; className is optional
 local function findGuiByText(from, text, className)
 	local scanned, classMatches = 0, 0
 	local textMatchButWrongClass = nil
 	for _, obj in ipairs(from:GetDescendants()) do
+		if isHubGui(obj) then
+			continue
+		end
 		if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
 			scanned = scanned + 1
 			if not className or obj:IsA(className) then
@@ -321,46 +341,43 @@ local function autoSell()
 
 	autoEquipBestFish()
 	firesignal(btn.Activated)
-	task.delay(0.15, function()
-		local storedFishGui = findGuiByText(playerGui, "Stored Fishes", "TextLabel")
-		if not storedFishGui then
-			if DEBUG then
-				warn("[autoSell] Stored Fishes label not found")
-			end
-			return
-		end
-		local current, max = parseCount(storedFishGui.Text)
-		if not current then
-			if DEBUG then
-				warn("[autoSell] Could not parse count from: " .. tostring(storedFishGui.Text))
-			end
-			return
-		end
+	task.wait(0.25)
+	local storedFishGui = findGuiByText(playerGui, "Stored Fishes", "TextLabel")
+	if not storedFishGui then
 		if DEBUG then
-			print("[autoSell] Stored Fishes:", current, "/", max or "?")
+			warn("[autoSell] Stored Fishes label not found")
 		end
-		if current >= autoSellThreshold then
-			if not rootpart then
-				updatePlayerInfo()
-			end
-			local oldCFrame = rootpart.CFrame
-			rootpart.CFrame = CFrame.new(workspace.Map.Shops.SellShop.WorldPivot.Position)
-			task.delay(0.5, function()
-				local sellButton = findGuiByText(playerGui, "Sell")
-				if not sellButton then
-					return
-				end
-				task.delay(0.15, function()
-					firesignal(sellButton.Parent.parent.parent.Activated)
-					rootpart.CFrame = oldCFrame
-				end)
-			end)
-		else
-			local closeButton = findGuiPath(playerGui, CLOSE_BUTTON_PATH)
-			firesignal(closeButton.Activated)
+		return
+	end
+	local current, max = parseCount(storedFishGui.Text)
+	if not current then
+		if DEBUG then
+			warn("[autoSell] Could not parse count from: " .. tostring(storedFishGui.Text))
 		end
-		autoSellLastTime = tick()
-	end)
+		return
+	end
+	if DEBUG then
+		print("[autoSell] Stored Fishes:", current, "/", max or "?")
+	end
+	if current >= autoSellThreshold then
+		if not rootpart then
+			updatePlayerInfo()
+		end
+		local oldCFrame = rootpart.CFrame
+		rootpart.CFrame = CFrame.new(workspace.Map.Shops.SellShop.WorldPivot.Position)
+		task.wait(0.25)
+		local sellButton = findGuiByText(playerGui, "Sell")
+		if not sellButton then
+			return
+		end
+		task.wait(0.25)
+		firesignal(sellButton.Parent.parent.parent.Activated)
+		rootpart.CFrame = oldCFrame
+	else
+		local closeButton = findGuiPath(playerGui, CLOSE_BUTTON_PATH)
+		firesignal(closeButton.Activated)
+	end
+	autoSellLastTime = tick()
 end
 
 task.wait(3.5)
