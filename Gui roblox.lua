@@ -113,8 +113,11 @@ local OpenDropdowns      = {}
 local DropdownOptionBtns = {}
 
 -- ============================ UTILITY ============================
+local tweenCache = {}
 local function Tween(obj, props, info)
-	TweenService:Create(obj, info or TweenFast, props):Play()
+	if tweenCache[obj] then tweenCache[obj]:Cancel() end
+	tweenCache[obj] = TweenService:Create(obj, info or TweenFast, props)
+	tweenCache[obj]:Play()
 end
 
 local function Ripple(parent, x, y)
@@ -220,12 +223,12 @@ local function Notify(title, text, duration, notiType)
 			if Noti.Parent then Noti:Destroy() end
 			for i, n in ipairs(Notifications) do
 				if n == Noti then table.remove(Notifications, i); break end
-			end
+				end
 			for i, n in ipairs(Notifications) do
 				TweenService:Create(n, TweenMed, {
 					Position = UDim2.new(1, -270, 0, 10 + (i - 1) * 62)
 				}):Play()
-			end
+				end
 		end)
 	end)
 
@@ -347,6 +350,7 @@ Window.BorderSizePixel = 0
 Window.ClipsDescendants = true
 Window.ZIndex = 1
 Window.Parent = ScreenGui
+Window.BackgroundTransparency = 0
 table.insert(BgElements, Window)
 
 local WindowStroke = Instance.new("UIStroke")
@@ -546,7 +550,7 @@ do
 				TweenService:Create(StatusDot, TweenInfo.new(1, Enum.EasingStyle.Sine), {
 					BackgroundTransparency = dotPhase and 0.5 or 0
 				}):Play()
-			end
+				end
 		end
 	end)
 end
@@ -708,13 +712,17 @@ local function CreateTab(name, icon)
 		if ActiveTab and Pages[ActiveTab] then
 			local prev = Pages[ActiveTab]
 			prev.Page.Visible = false
+				prev.Page.ScrollingEnabled = false
 			Tween(prev.Btn, {BackgroundTransparency = 1}, TweenSmooth)
 			Tween(prev.Icon, {TextColor3 = TextSec}, TweenSmooth)
 			Tween(prev.Label, {TextColor3 = TextSec}, TweenSmooth)
 		end
 		ActiveTab = name
 		Page.CanvasPosition = Vector2.new(0, 0) -- scroll to top
+			Page.Position = UDim2.new(0, 14, 0, 4)
 		Page.Visible = true
+			Page.ScrollingEnabled = true
+			Tween(Page, {Position = UDim2.new(0, 6, 0, 4)}, TweenSmooth)
 		Btn.BackgroundColor3 = Accent
 		Tween(Btn, {BackgroundTransparency = 0.85}, TweenSmooth)
 		Tween(IconLabel, {TextColor3 = Accent}, TweenSmooth)
@@ -738,6 +746,7 @@ local function CreateTab(name, icon)
 	Btn.TouchTap:Connect(Select)
 	Btn.MouseEnter:Connect(function()
 		if ActiveTab ~= name then
+				Btn.BackgroundColor3 = Accent
 			Tween(Btn, {BackgroundTransparency = 0.9}, TweenFast)
 			Tween(IconLabel, {TextColor3 = Text}, TweenFast)
 		end
@@ -773,7 +782,7 @@ local function DoSearch(query)
 				local match = string.find(string.lower(item.name), query)
 					or (item.keywords and string.find(string.lower(item.keywords), query))
 				item.frame.Visible = match ~= nil
-			end
+				end
 		end
 	end
 end
@@ -784,20 +793,48 @@ end)
 
 -- ======================== COMPONENTS =============================
 
-local function Section(parent, text)
-	local L = Instance.new("TextLabel")
-	L.Size = UDim2.new(1, 0, 0, 20)
-	L.BackgroundTransparency = 1
-	L.Text = text
-	L.TextColor3 = TextMut
-	L.TextSize = 9
-	L.Font = FONT_BOLD
-	L.TextXAlignment = Enum.TextXAlignment.Left
-	L.ZIndex = 2
-	L.Parent = parent
-	return L
-end
+	local function Section(parent, text)
+		local children = {}
+		local heightCache = {}
+		local collapsed = false
 
+		local Header = Instance.new("TextButton")
+		Header.Size = UDim2.new(1, 0, 0, 20)
+		Header.BackgroundTransparency = 1
+		Header.Text = "▼ " .. text
+		Header.TextColor3 = TextMut
+		Header.TextSize = 9
+		Header.Font = FONT_BOLD
+		Header.TextXAlignment = Enum.TextXAlignment.Left
+		Header.AutoButtonColor = false
+		Header.ZIndex = 2
+		Header.Parent = parent
+
+		Header.MouseButton1Click:Connect(function()
+			collapsed = not collapsed
+			Header.Text = (collapsed and "▶ " or "▼ ") .. text
+			for _, child in ipairs(children) do
+				if child then
+					child.Visible = not collapsed
+					if collapsed then
+						child.Size = UDim2.new(1, 0, 0, 0)
+					else
+						child.Size = UDim2.new(1, 0, 0, heightCache[child] or 34)
+					end
+				end
+			end
+		end)
+
+		local sec = {}
+		sec.Add = function(frame)
+			heightCache[frame] = frame.Size.Y.Offset
+			table.insert(children, frame)
+		end
+		sec.IsCollapsed = function()
+			return collapsed
+		end
+		return sec
+	end
 local function Button(parent, text, callback, keywords)
 	local B = Instance.new("TextButton")
 	B.Size = UDim2.new(1, 0, 0, 34)
@@ -986,18 +1023,24 @@ local function Slider(parent, text, min, max, default, callback, keywords)
 	ThumbC.CornerRadius = UDim.new(1, 0)
 	ThumbC.Parent = Thumb
 
-	local dragging = false
-	local function Update(x)
-		local pos = T.AbsolutePosition.X
-		local size = T.AbsoluteSize.X
-		local p = math.clamp((x - pos) / size, 0, 1)
-		val = math.floor(min + (p * (max - min)))
-		V.Text = tostring(val)
-		Fill.Size = UDim2.new(p, 0, 1, 0)
-		Thumb.Position = UDim2.new(p, -6, 0.5, -6)
-		if callback then callback(val) end
-	end
+		local dragging = false
+		local pendingX = 0
+		local needsUpdate = false
+		local function Update(x)
+			pendingX = x
+			needsUpdate = true
+		end
 
+		local function applyUpdate(x)
+			local pos = T.AbsolutePosition.X
+			local size = T.AbsoluteSize.X
+			local p = math.clamp((x - pos) / size, 0, 1)
+			val = math.floor(min + (p * (max - min)))
+			V.Text = tostring(val)
+			Fill.Size = UDim2.new(p, 0, 1, 0)
+			Thumb.Position = UDim2.new(p, -6, 0.5, -6)
+			if callback then callback(val) end
+		end
 	local SB = Instance.new("TextButton")
 	SB.Size = UDim2.new(1, 0, 1, 10)
 	SB.Position = UDim2.new(0, 0, 0, -5)
@@ -1021,17 +1064,25 @@ local function Slider(parent, text, min, max, default, callback, keywords)
 	local sliderInputEnded = UserInputService.InputEnded:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
 	end)
+
+		local sliderRenderStepped = RunService.RenderStepped:Connect(function()
+			if needsUpdate then
+				needsUpdate = false
+				applyUpdate(pendingX)
+				end
+		end)
 	-- Cleanup when slider is destroyed
 	F.AncestryChanged:Connect(function()
 		if not F.Parent then
 			if sliderInputChanged then sliderInputChanged:Disconnect(); sliderInputChanged = nil end
 			if sliderInputEnded then sliderInputEnded:Disconnect(); sliderInputEnded = nil end
+				if sliderRenderStepped then sliderRenderStepped:Disconnect(); sliderRenderStepped = nil end
 			for i, el in ipairs(ComponentBgs) do
 				if el == F then table.remove(ComponentBgs, i); break end
-			end
+				end
 			for i, el in ipairs(SearchableItems) do
 				if el.frame == F then table.remove(SearchableItems, i); break end
-			end
+				end
 		end
 	end)
 	return F, function() return val end
@@ -1180,18 +1231,18 @@ local function Dropdown(parent, text, options, default, callback, keywords)
 		if not F.Parent then
 			for i, f in ipairs(OpenDropdowns) do
 				if f == CloseDrop then table.remove(OpenDropdowns, i); break end
-			end
+				end
 			for _, data in ipairs(optionButtons) do
 				for i, btn in ipairs(DropdownOptionBtns) do
 					if btn == data.btn then table.remove(DropdownOptionBtns, i); break end
 				end
-			end
+				end
 			for i, el in ipairs(ComponentBgs) do
 				if el == F then table.remove(ComponentBgs, i); break end
-			end
+				end
 			for i, el in ipairs(SearchableItems) do
 				if el.frame == F then table.remove(SearchableItems, i); break end
-			end
+				end
 			if dropInputConn then dropInputConn:Disconnect(); dropInputConn = nil end
 		end
 	end)
@@ -1203,7 +1254,7 @@ local function Dropdown(parent, text, options, default, callback, keywords)
 			local match = query == "" or string.find(string.lower(data.opt), query)
 			if data.btn and data.btn.Parent then
 				data.btn.Visible = match ~= nil
-			end
+				end
 			if match then visibleCount = visibleCount + 1 end
 		end
 		OptionsScroll.CanvasSize = UDim2.new(0, 0, 0, visibleCount * 28)
@@ -1226,8 +1277,8 @@ local function Dropdown(parent, text, options, default, callback, keywords)
 		OB.LayoutOrder = i
 		OB.Parent = OptionsScroll
 
-		table.insert(optionButtons, {btn = OB, opt = opt})
-		table.insert(DropdownOptionBtns, OB)
+			table.insert(optionButtons, {btn = OB, opt = opt})
+			table.insert(DropdownOptionBtns, OB)
 
 		local function Sel()
 			selected = opt
@@ -1236,7 +1287,7 @@ local function Dropdown(parent, text, options, default, callback, keywords)
 				if data.btn and data.btn.Parent then
 					data.btn.TextColor3 = data.opt == opt and Accent or Text
 				end
-			end
+				end
 			CloseDrop()
 			if callback then callback(opt) end
 		end
@@ -1254,7 +1305,7 @@ local function Dropdown(parent, text, options, default, callback, keywords)
 		for _, data in ipairs(optionButtons) do
 			if data.btn and data.btn.Parent then
 				data.btn.TextColor3 = data.opt == newOpt and Accent or Text
-			end
+				end
 		end
 	end
 
@@ -1291,7 +1342,7 @@ local function Dropdown(parent, text, options, default, callback, keywords)
 		for _, data in ipairs(optionButtons) do
 			if data.btn and data.btn.Parent then
 				data.btn.TextColor3 = data.opt == selected and Accent or Text
-			end
+				end
 		end
 
 		task.defer(function()
@@ -1317,7 +1368,7 @@ local function Dropdown(parent, text, options, default, callback, keywords)
 				local inF = pos.X >= fPos.X and pos.X <= fPos.X + fSize.X
 					and pos.Y >= fPos.Y and pos.Y <= fPos.Y + fSize.Y
 				if not inDL and not inF then CloseDrop() end
-			end)
+				end)
 		end
 	end)
 
@@ -1389,7 +1440,7 @@ local function KeybindPicker(parent, text, default, callback, keywords)
 				listening = false
 				if conn then conn:Disconnect() end
 				if callback then callback(current) end
-			end
+				end
 		end)
 		task.delay(5, function()
 			if listening then
@@ -1397,7 +1448,7 @@ local function KeybindPicker(parent, text, default, callback, keywords)
 				KB.Text = current.Name
 				KB.BackgroundColor3 = BgElev
 				if conn then conn:Disconnect() end
-			end
+				end
 		end)
 	end)
 	KB.MouseEnter:Connect(function()
@@ -1457,12 +1508,12 @@ Label(MainPage, "Use the Settings tab to customize the UI.", true)
 Label(MainPage, "Wire your scripts into the components below.", true)
 
 -- ======================= SETTINGS PAGE ===========================
-Section(SettingsPage, "THEME")
+	local secTheme = Section(SettingsPage, "THEME")
 -- Store setSelected callbacks so config init can sync them
 local accentSetSelected = nil
 local bgThemeSetSelected = nil
 
-local _, accentSetSelectedFn = Dropdown(SettingsPage, "Accent Color", AccentOrder, Config.accent, function(name)
+local accentFrame, accentSetSelectedFn = Dropdown(SettingsPage, "Accent Color", AccentOrder, Config.accent, function(name)
 	if AccentColors[name] then
 		SetAccent(AccentColors[name])
 		Config.accent = name
@@ -1470,23 +1521,26 @@ local _, accentSetSelectedFn = Dropdown(SettingsPage, "Accent Color", AccentOrde
 	end
 end, "color accent theme")
 accentSetSelected = accentSetSelectedFn
+	secTheme.Add(accentFrame)
 
-local _, bgThemeSetSelectedFn = Dropdown(SettingsPage, "Background", BgThemeOrder, Config.bgTheme, function(name)
+local bgFrame, bgThemeSetSelectedFn = Dropdown(SettingsPage, "Background", BgThemeOrder, Config.bgTheme, function(name)
 	SetBgTheme(name)
 	Config.bgTheme = name
 	DebouncedSave()
 end, "background theme dark")
 bgThemeSetSelected = bgThemeSetSelectedFn
+	secTheme.Add(bgFrame)
 
 Spacer(SettingsPage, 8)
-Section(SettingsPage, "EFFECTS")
-Toggle(SettingsPage, "Window Glow", Config.glow, function(enabled)
+local secEffects = Section(SettingsPage, "EFFECTS")
+local glowFrame, _ = Toggle(SettingsPage, "Window Glow", Config.glow, function(enabled)
 	SetGlowEnabled(enabled)
 	Config.glow = enabled
 	DebouncedSave()
 end, "glow effect light")
+	secEffects.Add(glowFrame)
 
-Toggle(SettingsPage, "Transparency", false, function(enabled)
+local transFrame, _ = Toggle(SettingsPage, "Transparency", false, function(enabled)
 	TransparencyMode = enabled
 	if enabled then
 		Window.BackgroundTransparency = 0.1
@@ -1510,9 +1564,10 @@ Toggle(SettingsPage, "Transparency", false, function(enabled)
 		end
 	end
 end, "transparent opacity")
+	secEffects.Add(transFrame)
 
 Spacer(SettingsPage, 8)
-Section(SettingsPage, "INTERFACE")
+local secInterface = Section(SettingsPage, "INTERFACE")
 -- FIX: scale slider no longer re-centers window
 local function updateScale(v)
 	CurrentScale = v / 100
@@ -1528,16 +1583,18 @@ local function updateScale(v)
 	GlowContainer.Position = UDim2.new(oldPos.X.Scale, oldPos.X.Offset - 20, oldPos.Y.Scale, oldPos.Y.Offset - 20)
 	Window.Position = oldPos -- maintain position
 end
-Slider(SettingsPage, "UI Scale", 100, 150, Config.scale, updateScale, "scale size zoom")
+local scaleFrame, _ = Slider(SettingsPage, "UI Scale", 100, 150, Config.scale, updateScale, "scale size zoom")
+	secInterface.Add(scaleFrame)
 
 Spacer(SettingsPage, 8)
-Section(SettingsPage, "KEYBIND")
-KeybindPicker(SettingsPage, "Toggle GUI Key", ToggleKeybind, function(kb)
+local secKeybind = Section(SettingsPage, "KEYBIND")
+local kbFrame, _ = KeybindPicker(SettingsPage, "Toggle GUI Key", ToggleKeybind, function(kb)
 	ToggleKeybind = kb
 	Config.keybind = kb.Name
 	DebouncedSave()
 	Notify("Keybind", "Toggle set to " .. kb.Name, 2, "success")
 end, "keybind hotkey toggle")
+	secKeybind.Add(kbFrame)
 
 -- ========================= INFO PAGE =============================
 Section(InfoPage, "ABOUT")
@@ -1614,8 +1671,10 @@ MinBtn.MouseButton1Click:Connect(function()
 	if minimized then doRestore() else doMinimize() end
 end)
 
--- Close button = minimize (not destroy), re-openable with toggle key
-CloseBtn.MouseButton1Click:Connect(doMinimize)
+-- Close button = destroy GUI
+CloseBtn.MouseButton1Click:Connect(function()
+	ScreenGui:Destroy()
+end)
 
 -- Click heart badge to restore
 HeartBadge.MouseButton1Click:Connect(doRestore)
@@ -1780,9 +1839,29 @@ task.spawn(function()
 		Window.Position = UDim2.new(Config.posSX, Config.posOX, Config.posSY, Config.posOY)
 		GlowContainer.Position = UDim2.new(Config.posSX, Config.posOX - 20, Config.posSY, Config.posOY - 20)
 	end
-end)
+	end)
 
 print("Radium Hub v" .. HUB_VERSION)
 print("Device:", IsMobile and "Mobile" or "PC")
 print("Toggle:", ToggleKeybind.Name)
 Notify("Radium Hub", "v" .. HUB_VERSION .. " loaded", 3, "success")
+
+return {
+	CreateTab     = CreateTab,
+	Section       = Section,
+	Button        = Button,
+	Toggle        = Toggle,
+	Slider        = Slider,
+	Dropdown      = Dropdown,
+	KeybindPicker = KeybindPicker,
+	Label         = Label,
+	Spacer        = Spacer,
+
+	Notify          = Notify,
+	SetAccent       = SetAccent,
+	SetBgTheme      = SetBgTheme,
+	SetGlowEnabled  = SetGlowEnabled,
+	CloseAllDropdowns = CloseAllDropdowns,
+
+	Pages = Pages,
+}
