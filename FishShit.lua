@@ -3,7 +3,7 @@ local Hub = loadstring(
 	game:HttpGet("https://raw.githubusercontent.com/NoxLoveYa/RobloxProjects/refs/heads/main/Gui%20roblox.lua")
 )()
 
-local DEBUG = true
+local DEBUG = false
 
 -- Includes
 local Players: Players = game:GetService("Players")
@@ -20,7 +20,7 @@ local rootpart: BasePart = nil
 -- Hub Menu Var
 local autoTrainEnabled = false
 local autoFishEnabled = false
-local autoCastEnabled = false
+local autoSellEnabled = false
 local autoCastTreshold = 0.965
 local autoRebirthEnabled = false
 
@@ -33,22 +33,38 @@ local toggleFrame, _ = Hub.Toggle(testPage, "Auto Train", false, function(v)
 end)
 sec.Add(toggleFrame)
 
-local toggleFrame2, _ = Hub.Toggle(testPage, "Auto Cast", false, function(v)
-	autoCastEnabled = v
+local toggleFrame2, _ = Hub.Toggle(testPage, "Auto Fish", false, function(v)
+	autoFishEnabled = v
 end)
 sec.Add(toggleFrame2)
 
-local toggleFrame3, _ = Hub.Toggle(testPage, "Auto Rebirth", false, function(v)
-	autoRebirthEnabled = v
+local toggleFrame3, _ = Hub.Toggle(testPage, "Auto Sell", false, function(v)
+	autoSellEnabled = v
 end)
 sec.Add(toggleFrame3)
 
-local toggleFrame4, _ = Hub.Toggle(testPage, "Auto Fish", false, function(v)
-	autoFishEnabled = v
+local toggleFrame4, _ = Hub.Toggle(testPage, "Auto Rebirth", false, function(v)
+	autoRebirthEnabled = v
 end)
 sec.Add(toggleFrame4)
 
 -- Helpers Functions
+local function updatePlayerInfo()
+	character = localplayer.Character
+	if character then
+		humanoid = character:WaitForChild("Humanoid", 5)
+		rootpart = character:WaitForChild("HumanoidRootPart", 5)
+	end
+	localplayer.CharacterAdded:Connect(function(char)
+		character = char
+		humanoid = character:WaitForChild("Humanoid", 5)
+		rootpart = character:WaitForChild("HumanoidRootPart", 5)
+		print("Character Added")
+		print("Humanoid: ", humanoid)
+		print("RootPart: ", rootpart)
+	end)
+end
+
 local function findGuiPath(from, path, className)
 	local current = from
 	local lastIndex = #path
@@ -99,6 +115,53 @@ local function findGuiPath(from, path, className)
 	return current
 end
 
+-- Find a GuiObject (TextLabel/TextButton/TextBox) by its displayed text
+-- Partial (substring) match by default; className is optional
+local function findGuiByText(from, text, className)
+	local scanned, classMatches = 0, 0
+	local textMatchButWrongClass = nil
+	for _, obj in ipairs(from:GetDescendants()) do
+		if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+			scanned = scanned + 1
+			if not className or obj:IsA(className) then
+				classMatches = classMatches + 1
+			end
+			if obj.Text:find(text, 1, true) then
+				if not className or obj:IsA(className) then
+					return obj
+				else
+					textMatchButWrongClass = obj
+				end
+			end
+		end
+	end
+	if DEBUG then
+		warn(
+			"[findGuiByText] NOT FOUND for text '"
+				.. text
+				.. "' (class "
+				.. tostring(className)
+				.. ") in "
+				.. from:GetFullName()
+				.. " | scanned "
+				.. scanned
+				.. " text elements, "
+				.. classMatches
+				.. " matched class"
+		)
+		if textMatchButWrongClass then
+			warn(
+				"[findGuiByText] Text found but on a different class: "
+					.. textMatchButWrongClass.ClassName
+					.. " ("
+					.. textMatchButWrongClass:GetFullName()
+					.. ")"
+			)
+		end
+	end
+	return nil
+end
+
 local function VirtualMousePress(pos)
 	local pos = pos or workspace.CurrentCamera.ViewportSize / 2
 	virtualInput:SendMouseButton(pos, Enum.UserInputType.MouseButton1, true, 1)
@@ -139,6 +202,21 @@ end
 
 local function GetPower()
 	return parseNumber(localplayer.leaderstats.Power.Value)
+end
+
+-- Extract current/max from a string like "Stored Fishes [7/100]"
+local function parseCount(str)
+	if not str then
+		return nil
+	end
+	local current, max = str:match("%[(%d+)/(%d+)%]")
+	if not current then
+		current, max = str:match("(%d+)/(%d+)")
+	end
+	if not current then
+		return nil
+	end
+	return tonumber(current), tonumber(max)
 end
 
 -- Functions
@@ -210,29 +288,77 @@ local function autoRebirth()
 	end
 end
 
--- Routines
-localplayer.CharacterAdded:Connect(function(char)
-	character = char
-	humanoid = character:WaitForChild("Humanoid", 5)
-	rootpart = character:WaitForChild("HumanoidRootPart", 5)
-	print("Character Added")
-	print("Humanoid: ", humanoid)
-	print("RootPart: ", rootpart)
-end)
+local autoSellThreshold = 1
+local autoSellDelay = 10
+local autoSellLastTime = 0
+local CLOSE_BUTTON_PATH = { "6", "1", "31", "31", "4", "5", "2", "2", "3" }
+local function autoSell()
+	if tick() - autoSellLastTime < autoSellDelay then
+		return
+	end
+	local openBackpackGui = findGuiByText(playerGui, "- [G] Open Backpack -", "TextLabel")
+	if not openBackpackGui then
+		return
+	end
+	local btn = openBackpackGui.Parent
+	if not btn or not btn:IsA("TextButton") then
+		return
+	end
+
+	firesignal(btn.Activated)
+	task.delay(0.15, function()
+		local storedFishGui = findGuiByText(playerGui, "Stored Fishes", "TextLabel")
+		if not storedFishGui then
+			if DEBUG then
+				warn("[autoSell] Stored Fishes label not found")
+			end
+			return
+		end
+		local current, max = parseCount(storedFishGui.Text)
+		if not current then
+			if DEBUG then
+				warn("[autoSell] Could not parse count from: " .. tostring(storedFishGui.Text))
+			end
+			return
+		end
+		if DEBUG then
+			print("[autoSell] Stored Fishes:", current, "/", max or "?")
+		end
+		if current >= autoSellThreshold then
+			local oldCFrame = rootpart.CFrame
+			rootpart.CFrame = CFrame.new(workspace.Map.Shops.SellShop.WorldPivot.Position)
+			task.delay(0.5, function()
+				local sellButton = findGuiByText(playerGui, "Sell")
+				if not sellButton then return end
+				task.delay(0.15, function()
+					firesignal(sellButton.Parent.parent.parent.Activated)
+					rootpart.CFrame = oldCFrame
+				end)
+			end)
+		else
+			local closeButton = findGuiPath(playerGui, CLOSE_BUTTON_PATH)
+			firesignal(closeButton.Activated)
+		end
+		autoSellLastTime = tick()
+	end)
+end
+
+updatePlayerInfo()
 
 task.spawn(function()
 	while true do
 		if autoTrainEnabled then
 			autoTrain()
 		end
-		if autoCastEnabled then
-			autoCast()
-		end
 		if autoRebirthEnabled then
 			autoRebirth()
 		end
+		if autoSellEnabled then
+			autoSell()
+		end
 		if autoFishEnabled then
 			autoFish()
+			autoCast()
 		end
 		task.wait(0.05)
 	end
