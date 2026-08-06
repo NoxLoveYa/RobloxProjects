@@ -363,7 +363,7 @@ task.wait(3.5)
 updatePlayerInfo()
 
 task.spawn(function()
-	while true do
+	while task.wait() do
 		if autoTrainEnabled then
 			autoTrain()
 		end
@@ -377,12 +377,15 @@ task.spawn(function()
 			autoFish()
 			autoCast()
 		end
-		task.wait(0.05)
 	end
 end)
 
 task.spawn(function()
-	while true do
+	while task.wait() do
+		if not autoFishEnabled then
+			task.wait(1)
+			continue
+		end
 		local clickableStuffGui = findGuiPath(playerGui, { "6", "1", "53" })
 		if clickableStuffGui then
 			for _, child in ipairs(clickableStuffGui:GetDescendants()) do
@@ -391,6 +394,5 @@ task.spawn(function()
 				end
 			end
 		end
-		task.wait(0.05)
 	end
 end)
