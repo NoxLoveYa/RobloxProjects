@@ -21,7 +21,7 @@ local autoCastEnabled = false
 local autoCastTreshold = 0.98
 
 -- Hub Menu
-local testPage = Hub.CreateTab("Test Tab", "⭐")
+local testPage = Hub.CreateTab("Auto Farm", "⭐", 1)
 local sec = Hub.Section(testPage, "Farming")
 
 local toggleFrame, _ = Hub.Toggle(testPage, "Auto Train", false, function(v)
@@ -57,9 +57,11 @@ end
 local function autoTrain()
 	for _, gui in ipairs(playerGui:QueryDescendants("TextButton")) do
 		local guiFullName = gui:GetFullName()
-		if guiFullName ~= "Players." .. localplayer.Name .. ".PlayerGui.5.1.1.1.1.3" then
+		print("Gui Full Name: ", guiFullName)
+		if guiFullName ~= "Players." .. localplayer.Name .. ".PlayerGui.6.1.1.1.1.3" then
 			continue
 		end
+		print("Found Gui: ", guiFullName)
 		firesignal(gui.Activated)
 	end
 end
