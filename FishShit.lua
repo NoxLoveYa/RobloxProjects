@@ -23,6 +23,7 @@ local autoFishEnabled = false
 local autoSellEnabled = false
 local autoCastTreshold = 0.965
 local autoRebirthEnabled = false
+local autoSellThreshold = 1
 
 -- Hub Menu
 local testPage = Hub.CreateTab("Auto Farm", "⭐", 1)
@@ -42,6 +43,11 @@ local toggleFrame3, _ = Hub.Toggle(testPage, "Auto Sell", false, function(v)
 	autoSellEnabled = v
 end)
 sec.Add(toggleFrame3)
+
+local sliderFrame, _ = Hub.Slider(testPage, "Auto Sell Threshold", 1, 100, autoSellThreshold, function(v)
+	autoSellThreshold = v
+end)
+sec.Add(sliderFrame)
 
 local toggleFrame4, _ = Hub.Toggle(testPage, "Auto Rebirth", false, function(v)
 	autoRebirthEnabled = v
@@ -297,7 +303,6 @@ local function autoRebirth()
 	end
 end
 
-local autoSellThreshold = 1
 local autoSellDelay = 10
 local autoSellLastTime = 0
 local CLOSE_BUTTON_PATH = { "6", "1", "31", "31", "4", "5", "2", "2", "3" }
