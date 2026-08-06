@@ -634,9 +634,27 @@ local function SetBgTheme(themeName)
 	nudgeRender()
 end
 
-local function CreateTab(name, icon)
+local function getTabVisualIndex(order)
+	local count = 0
+	for _, data in pairs(Pages) do
+		if data.LayoutOrder < order then count = count + 1 end
+	end
+	return count
+end
+
+local function CreateTab(name, icon, order)
 	TabIndex = TabIndex + 1
 	local myIndex = TabIndex
+	local myOrder = order or TabIndex
+	if order then
+		-- shift existing tabs to make room (insertion semantics)
+		for _, data in pairs(Pages) do
+			if data.LayoutOrder >= order then
+				data.LayoutOrder = data.LayoutOrder + 1
+				data.Btn.LayoutOrder = data.Btn.LayoutOrder + 1
+			end
+		end
+	end
 
 	local Btn = Instance.new("TextButton")
 	Btn.Name = name
@@ -646,7 +664,7 @@ local function CreateTab(name, icon)
 	Btn.BorderSizePixel = 0
 	Btn.Text = ""
 	Btn.AutoButtonColor = false
-	Btn.LayoutOrder = myIndex
+	Btn.LayoutOrder = myOrder
 	Btn.ZIndex = 3
 	Btn.Parent = TabsHolder
 
@@ -728,7 +746,7 @@ local function CreateTab(name, icon)
 		Tween(IconLabel, {TextColor3 = Accent}, TweenSmooth)
 		Tween(Label, {TextColor3 = Text}, TweenSmooth)
 		TabIndicator.Visible = true
-		local scrollOffset = TabsHolder.CanvasPosition.Y; local indicatorY = 8 + (myIndex - 1) * 38 + 5 - scrollOffset
+		local scrollOffset = TabsHolder.CanvasPosition.Y; local indicatorY = 8 + getTabVisualIndex(Btn.LayoutOrder) * 38 + 5 - scrollOffset
 		Tween(TabIndicator, {Position = UDim2.new(0, 0, 0, indicatorY)}, TweenSmooth)
 		SearchInput.Text = ""
 		for _, item in ipairs(SearchableItems) do
@@ -738,7 +756,7 @@ local function CreateTab(name, icon)
 
 	Pages[name] = {
 		Btn = Btn, Page = Page, Icon = IconLabel,
-		Label = Label, Index = myIndex,
+		Label = Label, Index = myIndex, LayoutOrder = myOrder,
 		Select = Select  -- exposed so safe init can call directly
 	}
 
@@ -761,7 +779,7 @@ local function CreateTab(name, icon)
 	TabsHolder:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
 		if ActiveTab == name and TabIndicator.Visible then
 			local scrollOffset = TabsHolder.CanvasPosition.Y
-			local indicatorY = 8 + (myIndex - 1) * 38 + 5 - scrollOffset
+			local indicatorY = 8 + getTabVisualIndex(Btn.LayoutOrder) * 38 + 5 - scrollOffset
 			TabIndicator.Position = UDim2.new(0, 0, 0, indicatorY)
 		end
 	end)
