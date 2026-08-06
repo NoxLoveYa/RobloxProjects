@@ -85,7 +85,12 @@ local function findGuiPath(from, path, className)
 			if not current then
 				if DEBUG then
 					warn(
-						"[findGuiPath] Step " .. i .. ' failed: no child named "' .. key .. '" in ' .. parent:GetFullName()
+						"[findGuiPath] Step "
+							.. i
+							.. ' failed: no child named "'
+							.. key
+							.. '" in '
+							.. parent:GetFullName()
 					)
 				end
 			end
@@ -173,6 +178,8 @@ local function autoFish()
 	end
 	pcall(function()
 		firesignal(fishGui.Activated)
+		local Event = game:GetService("ReplicatedStorage")["shared/network@globalFunctions"].equipBestAquariumFish
+		Event:FireServer(0)
 	end)
 	lastFishTime = tick()
 end
