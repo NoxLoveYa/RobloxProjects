@@ -1,6 +1,7 @@
 {
     "robloxLsp.diagnostics.globals": [
         "cloneref",
-        "firesignal"
+        "firesignal",
+        "mouse1click"
     ]
 }
