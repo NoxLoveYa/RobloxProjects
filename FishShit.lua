@@ -59,9 +59,6 @@ local function updatePlayerInfo()
 		character = char
 		humanoid = character:WaitForChild("Humanoid", 5)
 		rootpart = character:WaitForChild("HumanoidRootPart", 5)
-		print("Character Added")
-		print("Humanoid: ", humanoid)
-		print("RootPart: ", rootpart)
 	end)
 end
 
@@ -219,6 +216,11 @@ local function parseCount(str)
 	return tonumber(current), tonumber(max)
 end
 
+local function autoEquipBestFish()
+	local Event = game:GetService("ReplicatedStorage")["shared/network@globalFunctions"].equipBestAquariumFish
+	Event:FireServer(0)
+end
+
 -- Functions
 local function autoTrain()
 	for _, gui in ipairs(playerGui:QueryDescendants("TextButton")) do
@@ -256,8 +258,7 @@ local function autoFish()
 	end
 	pcall(function()
 		firesignal(fishGui.Activated)
-		local Event = game:GetService("ReplicatedStorage")["shared/network@globalFunctions"].equipBestAquariumFish
-		Event:FireServer(0)
+		autoEquipBestFish()
 	end)
 	lastFishTime = tick()
 end
@@ -305,6 +306,7 @@ local function autoSell()
 		return
 	end
 
+	autoEquipBestFish()
 	firesignal(btn.Activated)
 	task.delay(0.15, function()
 		local storedFishGui = findGuiByText(playerGui, "Stored Fishes", "TextLabel")
