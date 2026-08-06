@@ -254,6 +254,10 @@ local Config = {
 	posOX = nil,
 	posSY = nil,
 	posOY = nil,
+	hbSX = nil,  -- saved heart badge position components
+	hbOX = nil,
+	hbSY = nil,
+	hbOY = nil,
 }
 
 local function SaveConfig()
@@ -280,6 +284,10 @@ local function LoadConfig()
 	if decoded.posOX then Config.posOX = decoded.posOX end
 	if decoded.posSY then Config.posSY = decoded.posSY end
 	if decoded.posOY then Config.posOY = decoded.posOY end
+	if decoded.hbSX then Config.hbSX = decoded.hbSX end
+	if decoded.hbOX then Config.hbOX = decoded.hbOX end
+	if decoded.hbSY then Config.hbSY = decoded.hbSY end
+	if decoded.hbOY then Config.hbOY = decoded.hbOY end
 end
 
 -- Use task.cancel for debouncing (no :Disconnect() on threads)
@@ -1671,7 +1679,11 @@ local function doMinimize()
 	DropdownHolder.Visible = false
 	-- Show heart badge
 	HeartBadge.Visible = true
-	HeartBadge.Position = UDim2.new(Window.Position.X.Scale, Window.Position.X.Offset + (math.floor(WinW * CurrentScale) - 44) / 2, Window.Position.Y.Scale, Window.Position.Y.Offset + (math.floor(WinH * CurrentScale) - 44) / 2) -- centered where window was
+	if Config.hbSX then
+		HeartBadge.Position = UDim2.new(Config.hbSX, Config.hbOX, Config.hbSY, Config.hbOY)
+	else
+		HeartBadge.Position = UDim2.new(Window.Position.X.Scale, Window.Position.X.Offset + (math.floor(WinW * CurrentScale) - 44) / 2, Window.Position.Y.Scale, Window.Position.Y.Offset + (math.floor(WinH * CurrentScale) - 44) / 2) -- centered where window was
+	end
 end
 
 local function doRestore()
@@ -1694,15 +1706,15 @@ CloseBtn.MouseButton1Click:Connect(function()
 	ScreenGui:Destroy()
 end)
 
--- Click heart badge to restore
-HeartBadge.MouseButton1Click:Connect(doRestore)
-
--- Drag the heart badge too
+-- Click heart badge to restore, drag to move
+local HEART_DRAG_THRESHOLD = 8
 local heartDragging = false
+local heartWasDragged = false
 local heartDragStart, heartStartPos = nil, nil
 HeartBadge.InputBegan:Connect(function(i)
 	if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
 		heartDragging = true
+		heartWasDragged = false
 		heartDragStart = i.Position
 		heartStartPos = HeartBadge.Position
 	end
@@ -1711,6 +1723,9 @@ local heartInputChanged = UserInputService.InputChanged:Connect(function(i)
 	if not heartDragging then return end
 	if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then
 		local d = i.Position - heartDragStart
+		if (d.X ^ 2 + d.Y ^ 2) ^ 0.5 > HEART_DRAG_THRESHOLD then
+			heartWasDragged = true
+		end
 		HeartBadge.Position = UDim2.new(heartStartPos.X.Scale, heartStartPos.X.Offset + d.X,
 			heartStartPos.Y.Scale, heartStartPos.Y.Offset + d.Y)
 	end
@@ -1718,6 +1733,16 @@ end)
 local heartInputEnded = UserInputService.InputEnded:Connect(function(i)
 	if heartDragging and (i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch) then
 		heartDragging = false
+		if heartWasDragged then
+			-- Save the new badge position instead of restoring the hub
+			Config.hbSX = HeartBadge.Position.X.Scale
+			Config.hbOX = HeartBadge.Position.X.Offset
+			Config.hbSY = HeartBadge.Position.Y.Scale
+			Config.hbOY = HeartBadge.Position.Y.Offset
+			DebouncedSave()
+		else
+			doRestore()
+		end
 	end
 end)
 

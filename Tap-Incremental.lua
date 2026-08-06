@@ -16,17 +16,25 @@ local toggleFrame, _ = Hub.Toggle(autoFarmPage, "Auto Click", false, function(v)
 end)
 sec.Add(toggleFrame)
 
--- Force Auto Farm to the top (independent of library CreateTab order support)
-local autoFarmData = Hub.Pages and Hub.Pages["Auto Farm"]
-if autoFarmData then
-	for _, data in pairs(Hub.Pages) do
-		if data ~= autoFarmData and data.LayoutOrder >= 1 then
-			data.LayoutOrder = data.LayoutOrder + 1
-			data.Btn.LayoutOrder = data.Btn.LayoutOrder + 1
+-- Functions
+local function autoBuy()
+	for _, gui in ipairs(game:GetService("Players").LocalPlayer.PlayerGui:QueryDescendants("TextButton")) do
+		if gui.Text ~= "Max" then
+			continue
+		end
+		local color = gui:GetChildren("UIGradient")
+
+		if
+			color
+			and color.Color
+				== ColorSequence.new({
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(246, 255, 76)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(119, 73, 0)),
+				})
+		then
+			firesignal(gui.Activated)
 		end
 	end
-	autoFarmData.LayoutOrder = 1
-	autoFarmData.Btn.LayoutOrder = 1
 end
 
 -- Routines
