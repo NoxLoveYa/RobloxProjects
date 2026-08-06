@@ -3,6 +3,8 @@ local Hub = loadstring(
 	game:HttpGet("https://raw.githubusercontent.com/NoxLoveYa/RobloxProjects/refs/heads/main/Gui%20roblox.lua")
 )()
 
+local DEBUG = true
+
 -- Includes
 local Players: Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -17,6 +19,7 @@ local rootpart: BasePart = nil
 
 -- Hub Menu Var
 local autoTrainEnabled = false
+local autoFishEnabled = false
 local autoCastEnabled = false
 local autoCastTreshold = 0.965
 local autoRebirthEnabled = false
@@ -40,6 +43,11 @@ local toggleFrame3, _ = Hub.Toggle(testPage, "Auto Rebirth", false, function(v)
 end)
 sec.Add(toggleFrame3)
 
+local toggleFrame4, _ = Hub.Toggle(testPage, "Auto Fish", false, function(v)
+	autoFishEnabled = v
+end)
+sec.Add(toggleFrame4)
+
 -- Helpers Functions
 local function findGuiPath(from, path, className)
 	local current = from
@@ -58,13 +66,27 @@ local function findGuiPath(from, path, className)
 				end
 			end
 			if not match then
-				warn("[findGuiPath] Step " .. i .. " failed: no child named \"" .. key .. "\" of class " .. className .. " in " .. parent:GetFullName())
+				if DEBUG then
+					warn(
+						"[findGuiPath] Step "
+							.. i
+							.. ' failed: no child named "'
+							.. key
+							.. '" of class '
+						.. className
+						.. " in "
+						.. parent:GetFullName()
+				)
 			end
 			current = match
 		else
 			current = parent:FindFirstChild(key)
 			if not current then
-				warn("[findGuiPath] Step " .. i .. " failed: no child named \"" .. key .. "\" in " .. parent:GetFullName())
+				if DEBUG then
+					warn(
+						"[findGuiPath] Step " .. i .. ' failed: no child named "' .. key .. '" in ' .. parent:GetFullName()
+					)
+				end
 			end
 		end
 	end
@@ -136,6 +158,24 @@ local function autoCast()
 	end
 end
 
+local autoFishDelay = 1
+local lastFishTime = 0
+local FISH_PATH = { "6", "1", "53", "1", "1", "2" }
+local function autoFish()
+	local fishGui = findGuiPath(playerGui, FISH_PATH)
+	if not fishGui or not fishGui.Visible then
+		return
+	end
+
+	if tick() - lastFishTime < autoFishDelay then
+		return
+	end
+	pcall(function()
+		firesignal(fishGui.Activated)
+	end)
+	lastFishTime = tick()
+end
+
 local EXP_PATH = { "6", "1", "2", "3" }
 local function autoRebirth()
 	local needRerbirth = false
@@ -146,6 +186,11 @@ local function autoRebirth()
 
 	local currentExpBar = findGuiPath(expGui, { "1" }, "Frame")
 	local expTargetBar = findGuiPath(expGui, { "2" }, "Frame")
+
+	if not currentExpBar or not expTargetBar then
+		return
+	end
+
 	local currentExp = currentExpBar.Size.X.Scale
 	local expTarget = expTargetBar.Position.X.Scale
 	if currentExp >= expTarget then
@@ -177,6 +222,9 @@ task.spawn(function()
 		end
 		if autoRebirthEnabled then
 			autoRebirth()
+		end
+		if autoFishEnabled then
+			autoFish()
 		end
 		task.wait(0.05)
 	end
