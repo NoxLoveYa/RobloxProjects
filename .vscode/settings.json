@@ -3,6 +3,7 @@
         "cloneref",
         "firesignal",
         "mouse1click",
-        "mousemoveabs"
+        "mousemoveabs",
+        "Drawing"
     ]
 }
